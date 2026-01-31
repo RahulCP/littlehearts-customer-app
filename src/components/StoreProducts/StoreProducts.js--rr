@@ -1,0 +1,82 @@
+import React, { useEffect, useMemo, useState } from "react";
+import axios from "axios";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+
+import ProductCard from "../storefront/ProductCard";
+import "./StoreProducts.css";
+
+const StoreProducts = () => {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const navigate = useNavigate();
+  const { slug } = useParams();
+  const [searchParams] = useSearchParams();
+
+  const categoryId = searchParams.get("categoryId"); // may be null
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const storeSlug = slug || "rare";
+        const { data } = await axios.get(
+          `http://localhost:5005/api/store/${storeSlug}/storeproducts`,
+          {
+            params: {
+              categoryId: categoryId || undefined,
+              limit: 120,
+              offset: 0,
+            },
+          }
+        );
+
+        setProducts(Array.isArray(data?.products) ? data.products : []);
+      } catch (err) {
+        console.error("Error loading storeproducts:", err);
+        setProducts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [slug, categoryId]);
+
+  const list = useMemo(() => products || [], [products]);
+
+  return (
+    <div className="spPage">
+      <div className="spContainer">
+        <div className="spHeader">
+          <h1 className="spTitle">Collection</h1>
+          <div className="spSub">
+            {loading ? "Loading…" : `${list.length} products`}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="spLoading">Loading…</div>
+        ) : (
+          <div className="spGrid">
+            {list.map((p) => (
+              <ProductCard
+                key={p.product_uid}
+                p={p}
+                onClick={() =>
+                  navigate(`/${slug || "rare"}/product/${p.product_uid}`)
+                }
+              />
+            ))}
+          </div>
+        )}
+
+        {!loading && list.length === 0 && (
+          <div className="spEmpty">No products found.</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default StoreProducts;

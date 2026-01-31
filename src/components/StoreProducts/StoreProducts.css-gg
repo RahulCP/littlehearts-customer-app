@@ -1,0 +1,56 @@
+.spPage {
+  background: #ffffff;
+  min-height: 100vh;
+}
+
+.spContainer {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 28px 18px 60px;
+}
+
+.spHeader {
+  margin-bottom: 22px;
+}
+
+.spTitle {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.spSub {
+  margin-top: 6px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.spLoading {
+  padding: 20px 0;
+  opacity: 0.7;
+}
+
+/* Shopify-like grid */
+.spGrid {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 720px) {
+  .spGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .spGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.spEmpty {
+  padding-top: 22px;
+  opacity: 0.75;
+}

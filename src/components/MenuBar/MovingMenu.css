@@ -1,0 +1,51 @@
+.moving-menu {
+    display: flex;
+    justify-content: center;
+    gap: 22px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #000;
+    cursor: pointer;
+    position: relative;
+    margin-top: 20px;
+  }
+  
+  .menu-item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .ml1 {
+    position: relative;
+    display: inline-block;
+    text-transform: uppercase;
+  }
+  
+  .letter {
+    display: inline-block;
+    opacity: 0;
+    transform-origin: center;
+  }
+  
+  /* Animated Underlines */
+  .menu-item-line {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background: teal;
+    opacity: 0;
+    transform-origin: center;
+    transform: scaleX(0);
+  }
+  
+  .top {
+    top: -5px;
+  }
+  
+  .bottom {
+    bottom: -5px;
+  }
+  

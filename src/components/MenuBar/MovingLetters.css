@@ -1,0 +1,35 @@
+.ml1 {
+    position: relative;
+    font-weight: 900;
+    font-size: 3rem;
+    text-align: center;
+    color: #ff6600;
+    background: black;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .text-wrapper {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    padding: 0.2em 0;
+  }
+  
+  .letter {
+    display: inline-block;
+    opacity: 0;
+  }
+  
+  .line {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: 100%;
+    background-color: #ff6600;
+    transform-origin: 0 50%;
+  }
+  
