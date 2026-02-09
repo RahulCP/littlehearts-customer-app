@@ -94,7 +94,7 @@ const SalesList = () => {
   /* -------------------- navigation -------------------- */
   const viewProductDetails = (productUid, itemUid) => {
     const qs = itemUid ? `?itemUid=${encodeURIComponent(itemUid)}` : "";
-    navigate(`/${effectiveSlug}/product/${encodeURIComponent(productUid)}${qs}`);
+    navigate(`/store/${effectiveSlug}/product/${encodeURIComponent(productUid)}${qs}`);
   };
 
   return (

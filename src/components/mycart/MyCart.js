@@ -47,9 +47,9 @@ function buildProductUrl(slug, line) {
   const productUid = line?.product_uid || line?.productId || line?.product_id;
   const productSlug = line?.product_slug || line?.productSlug;
 
-  if (productUid) return `/${slug}/product/${productUid}`;
-  if (productSlug) return `/${slug}/product/${productSlug}`;
-  return `/${slug}/products`;
+  if (productUid) return `/store/${slug}/product/${productUid}`;
+  if (productSlug) return `/store/${slug}/product/${productSlug}`;
+  return `/store/${slug}/products`;
 }
 
 /**
@@ -146,11 +146,11 @@ export default function MyCart() {
       setToast("Your cart is empty.");
       return;
     }
-    navigate(`/${slug}/checkout`);
+    navigate(`/store/${slug}/checkout`);
   };
 
-  const goLogin = () => navigate(`/${slug}/login`);
-  const continueShopping = () => navigate(`/${slug}/products`);
+  const goLogin = () => navigate(`/store/${slug}/login`);
+  const continueShopping = () => navigate(`/store/${slug}/products`);
 
   const openProduct = (line) => {
     const url = buildProductUrl(slug, line);
@@ -392,14 +392,14 @@ export default function MyCart() {
             <button onClick={continueShopping} style={styles.primaryBtn}>
               Continue shopping
             </button>
-            <button onClick={() => navigate(`/${slug}/login`)} style={styles.ghostBtn}>
+            <button onClick={() => navigate(`/store/${slug}/login`)} style={styles.ghostBtn}>
               Log in
             </button>
           </div>
 
           <div style={styles.subtleRow}>
             Have an account?
-            <button onClick={() => navigate(`/${slug}/login`)} style={styles.linkBtn}>
+            <button onClick={() => navigate(`/store/${slug}/login`)} style={styles.linkBtn}>
               Log in to check out faster.
             </button>
           </div>

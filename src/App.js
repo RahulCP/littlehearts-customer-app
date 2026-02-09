@@ -1,11 +1,10 @@
-// src/App.js
 import React, { useState, useEffect, useContext, createContext } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
-  Navigate,
   useLocation,
+  Navigate,
 } from "react-router-dom";
 import { Box, Container, CircularProgress } from "@mui/material";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -14,18 +13,14 @@ import MenuBar from "./components/MenuBar/MenuBar";
 import GlobalProvider from "./GlobalProvider";
 import WelcomePage from "./components/WelcomePage/WelcomePage";
 import HeaderGrid from "./components/Header/HeaderGrid";
-import { API_BASE_URL } from "./config/constants";
 import { ToastProvider } from "./utility-v1/ToastProvider";
 import GoogleLoginComponent from "./utility-v1/GoogleLoginComponent";
-import PrivateRoute from "./PrivateRoute";
 
-// Storefront components (customer-facing)
+// Storefront (customer-facing)
+import StoreProductsNew from "./components/StoreFront/SalesList";
 import StoreProductDetails from "./components/StoreProducts/ProductDetails";
 import MyCart from "./components/mycart/MyCart";
 import Checkout from "./components/checkout/Checkout";
-
-// Storefront components (customer-facing)
-import StoreProductsNew from "./components/StoreFront/SalesList";
 
 const ImageCacheContext = createContext();
 export const useImageCache = () => useContext(ImageCacheContext);
@@ -35,29 +30,24 @@ const dummyUser = {
   name: "John Doe",
   email: "johndoe@example.com",
   role: "admin",
-  avatar: "https://via.placeholder.com/150",
 };
 
-const HeaderGridWrapper = ({ user, allItems }) => {
+/* =====================================================
+   HeaderGrid wrapper (ONLY for /store/:slug/*)
+   ===================================================== */
+const HeaderGridWrapper = ({ allItems }) => {
   const location = useLocation();
   const pathArray = location.pathname.split("/").filter(Boolean);
-  // examples:
-  // "/"                        -> []
-  // "/rare"                    -> ["rare"]
-  // "/rare/product/abc"        -> ["rare","product","abc"]
-  // "/ammulogin"               -> ["ammulogin"]
-  // "/admin/stores"            -> ["admin","stores"]
 
-  if (pathArray.length === 0) return null;
+  // Expected paths:
+  // /store/illolam
+  // /store/illolam/products
+  // /store/illolam/product/xxx
 
-  const first = pathArray[0];
+  if (pathArray[0] !== "store") return null;
 
-  // Reserved top-level routes that are NOT store slugs
-  const reserved = ["ammulogin", "products", "admin"];
-
-  if (reserved.includes(first)) return null;
-
-  const storeSlug = first; // e.g. "rare"
+  const storeSlug = pathArray[1];
+  if (!storeSlug) return null;
 
   return (
     <HeaderGrid
@@ -71,19 +61,20 @@ const HeaderGridWrapper = ({ user, allItems }) => {
 };
 
 function App() {
-  const [allItems, setAllItems] = useState([]);
-  const [imageCache, setImageCache] = useState(new Map());
+  const [allItems] = useState([]);
+  const [imageCache] = useState(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
 
-  // Load user from sessionStorage or fallback to dummy
+  /* =====================================================
+     Load user (dummy for now)
+     ===================================================== */
   useEffect(() => {
     const storedUser = sessionStorage.getItem("user");
     if (storedUser) {
       try {
         setUser(JSON.parse(storedUser));
-      } catch (error) {
-        console.error("Failed to parse user from sessionStorage:", error);
+      } catch {
         setUser(dummyUser);
       }
     } else {
@@ -91,23 +82,11 @@ function App() {
     }
   }, []);
 
-  // Fetch items once (for your old Illolam list, search, etc.)
+  /* =====================================================
+     App bootstrap
+     ===================================================== */
   useEffect(() => {
-    const fetchAndCacheImages = async () => {
-      try {
-      //  const response = await fetch(`${API_BASE_URL}/filtered-items`);
-        const data = await response.json();
-//
-        // If you want to re-enable actual image caching, use setImageCache here
-       // setAllItems(data);
-      } catch (error) {
-        console.error("Error fetching items or caching images:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchAndCacheImages();
+    setIsLoading(false);
   }, []);
 
   if (isLoading) {
@@ -133,25 +112,49 @@ function App() {
           <Container maxWidth="xl">
             <ToastProvider>
               <MenuBar allItems={allItems} />
-              <HeaderGridWrapper user={user} allItems={allItems} />
+              <HeaderGridWrapper allItems={allItems} />
 
               <Box>
                 <Routes>
-                  {/* Home / Landing */}
+                  {/* Landing */}
                   <Route path="/" element={<WelcomePage />} />
+
                   {/* Login */}
                   <Route
                     path="/ammulogin"
                     element={<GoogleLoginComponent setUserParent={setUser} />}
                   />
-                  <Route path="/:slug/products" element={<StoreProductsNew />} />
-                  <Route path="/:slug/my-cart" element={<MyCart />} />
-                  <Route path="/:slug/checkout" element={<Checkout />} />
+
+                  {/* ================= STORE FRONT ================= */}
+
+                  {/* ✅ IMPORTANT: handle /store/:slug */}
+                  <Route
+                    path="/store/:slug"
+                    element={<Navigate to="products" replace />}
+                  />
 
                   <Route
-                    path="/:slug/product/:productUid"
+                    path="/store/:slug/products"
+                    element={<StoreProductsNew />}
+                  />
+
+                  <Route
+                    path="/store/:slug/product/:productUid"
                     element={<StoreProductDetails />}
                   />
+
+                  <Route
+                    path="/store/:slug/my-cart"
+                    element={<MyCart />}
+                  />
+
+                  <Route
+                    path="/store/:slug/checkout"
+                    element={<Checkout />}
+                  />
+
+                  {/* Fallback */}
+                  <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </Box>
             </ToastProvider>

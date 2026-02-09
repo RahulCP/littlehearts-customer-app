@@ -53,12 +53,15 @@ const MenuBar = ({ allItems }) => {
   const drawerRef = useRef(null);
 
   // ----------------------------
-  // Derive store slug from URL
+  // ✅ Derive store slug from NEW URL pattern: /store/:slug/...
   // ----------------------------
   const pathArray = location.pathname.split("/").filter(Boolean);
-  const firstSegment = pathArray[0] || null;
-  const reserved = ["ammulogin", "admin", "products"]; // non-store routes
-  const storeSlug = reserved.includes(firstSegment) ? null : firstSegment;
+
+  // examples:
+  // "/store/illolam/products" -> ["store","illolam","products"]
+  // "/ammulogin"              -> ["ammulogin"]
+  // "/"                       -> []
+  const storeSlug = pathArray[0] === "store" ? (pathArray[1] || null) : null;
 
   // ----------------------------
   // Detect customer login (store-scoped)
@@ -146,21 +149,21 @@ const MenuBar = ({ allItems }) => {
   const menuItems = [];
 
   if (storeSlug) {
-    menuItems.push({ text: "All Items", href: `/${storeSlug}/products` });
+    menuItems.push({ text: "All Items", href: `/store/${storeSlug}/products` });
 
     categories.forEach((cat) => {
       menuItems.push({
         text: cat.name,
-        href: `/${storeSlug}/products?categoryId=${cat.id}`,
+        href: `/store/${storeSlug}/products?categoryId=${cat.id}`,
       });
     });
 
     // ✅ show only when customer token exists for this store
     if (isCustomerLoggedIn) {
-      menuItems.push({ text: "My Orders", href: `/${storeSlug}/my-orders` });
+      menuItems.push({ text: "My Orders", href: `/store/${storeSlug}/my-orders` });
     }
 
-    menuItems.push({ text: "My Cart", href: `/${storeSlug}/my-cart` });
+    menuItems.push({ text: "My Cart", href: `/store/${storeSlug}/my-cart` });
   } else {
     menuItems.push({ text: "All Stores", href: "/" });
   }
@@ -174,7 +177,7 @@ const MenuBar = ({ allItems }) => {
     if (!item) return;
 
     if (storeSlug && item.product_uid) {
-      navigate(`/${storeSlug}/product/${item.product_uid}`);
+      navigate(`/store/${storeSlug}/product/${item.product_uid}`);
       setIsSearchModalOpen(false);
       return;
     }
@@ -196,18 +199,18 @@ const MenuBar = ({ allItems }) => {
   const closeSearchModal = () => setIsSearchModalOpen(false);
 
   const handleLogoClick = () => {
-    if (storeSlug) navigate(`/${storeSlug}/products`);
+    if (storeSlug) navigate(`/store/${storeSlug}/products`);
     else navigate("/");
   };
 
   const handleHomeClick = () => {
-    if (storeSlug) navigate(`/${storeSlug}/products`);
+    if (storeSlug) navigate(`/store/${storeSlug}/products`);
     else navigate("/");
   };
 
   const handleCartClick = () => {
-    if (storeSlug) navigate(`/${storeSlug}/my-cart`);
-    else navigate("/my-cart");
+    if (storeSlug) navigate(`/store/${storeSlug}/my-cart`);
+    else navigate("/"); // no store => go home
   };
 
   // Optional: drawer text animation if you still use anime.js
