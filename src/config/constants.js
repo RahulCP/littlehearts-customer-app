@@ -1,16 +1,46 @@
 // src/config/constants.js
 
-const HOST = window.location.hostname;     // e.g. 192.168.1.38 or localhost
-const PROTOCOL = window.location.protocol; // http: or https:
+const isBrowser = typeof window !== "undefined";
 
-// ✅ these ports are your services
-const API_HOST = `${PROTOCOL}//${HOST}:5005`;
-const IMG_HOST = `${PROTOCOL}//${HOST}:5002`;
+const HOST = isBrowser ? window.location.hostname : "localhost";
+const PROTOCOL = isBrowser ? window.location.protocol : "http:";
 
-export const API_BASE_URL = `${API_HOST}/api`;
-export const IMAGE_BASE_URL = `${IMG_HOST}/img`;
-export const IMAGE_URL = `${IMG_HOST}/img`;
+// https → production (behind nginx)
+// http  → development (direct ports)
+const isProdBrowser = isBrowser && PROTOCOL === "https:";
 
-export const APPIMAGE_BASE_URL = "https://illolam.com/appimg";
-export const PICKUP_NAME = "Anjana artech";
-export const SELLER_GSTIN = "32AJNPA9627K1Z0";
+/* =====================================================
+   MAIN API (Node backend :5055 → /v2api)
+   ===================================================== */
+export const API_BASE_URL = isProdBrowser
+  ? `${PROTOCOL}//${HOST}/v2api`
+  : `${PROTOCOL}//${HOST}:5055/v2api`;
+
+/* =====================================================
+   IMAGE DISPLAY (static files)
+   used ONLY for <img src="...">
+   ===================================================== */
+export const V2IMG_BASE_URL = isProdBrowser
+  ? `${PROTOCOL}//${HOST}/v2img`
+  : `${PROTOCOL}//${HOST}:5002/v2img`;
+
+/* =====================================================
+   IMAGE API (upload / list / delete)
+   used for PUT/GET/DELETE requests
+   ===================================================== */
+export const V2IMG_API_BASE_URL = isProdBrowser
+  ? `${PROTOCOL}//${HOST}/v2img/api`
+  : `${PROTOCOL}//${HOST}:5002/api`;
+
+/* =====================================================
+   APP IMAGES (logos, banners, static app assets)
+   ===================================================== */
+export const APPIMAGE_BASE_URL = isProdBrowser
+  ? `${PROTOCOL}//${HOST}/appimg`
+  : `${PROTOCOL}//${HOST}:5002/appimg`;
+
+/* =====================================================
+   Backward compatibility (if old code uses this)
+   ===================================================== */
+export const IMAGE_BASE_URL = V2IMG_BASE_URL;
+export const IMAGE_SERVER_URL = V2IMG_BASE_URL;

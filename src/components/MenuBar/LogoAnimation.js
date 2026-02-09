@@ -62,7 +62,7 @@ const LogoAnimation = () => {
           <span key={index} className="logo-letter">
             <img
               className={index === 3 ? "logo-special" : ""} // Apply special class for 4th letter
-              src={`${APPIMAGE_BASE_URL}/appimages/${letter.name}.png`}
+              src={`${APPIMAGE_BASE_URL}/${letter.name}.png`}
               alt={letter.name}
               style={{
                 width: `${letter.width * scaleFactor}px`,

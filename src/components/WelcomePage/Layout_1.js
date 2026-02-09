@@ -6,9 +6,9 @@ import { FONT_FAMILY_ABRILA } from "../../config/themeConstants";
 import ImageSlider from "./ImageSlider";
 
 const images = [
-  "/appimages/vishu.png",
-  "/appimages/eid.png",
-  "/appimages/easter.png",
+  "/vishu.png",
+  "/eid.png",
+  "/easter.png",
 ];
 
 const Layout_1 = () => {
@@ -26,7 +26,7 @@ const Layout_1 = () => {
       {/* Left Column */}
       <Grid item xs={6} md={3} order={{ xs: 2, md: 1 }}>
         <ImageBox
-          image={"/appimages/clearence.png"}
+          image={"/clearence.png"}
           bgColor="#D6F0FF" // Light blueish background
           height={{
             xs: "200px", // Small devices
@@ -41,7 +41,7 @@ const Layout_1 = () => {
       <Grid item xs={6} md={3} order={{ xs: 3, md: 3 }}>
         <Stack spacing={2}>
           <ImageBox
-            image={"/appimages/combo.png"}
+            image={"/combo.png"}
             bgColor="#FFF9CC" // Light blueish background
             height={{
               xs: "200px", // Small devices
@@ -56,7 +56,7 @@ const Layout_1 = () => {
       <Grid item xs={6} md={3} order={{ xs: 4, md: 4 }}>
         <Stack spacing={2}>
           <ImageBox
-            image={"/appimages/quality.png"}
+            image={"/quality.png"}
             bgColor="#DFFFD6" // Light blueish background
             height={{
               xs: "175px", // Small devices
@@ -70,7 +70,7 @@ const Layout_1 = () => {
       <Grid item xs={6} md={3} order={{ xs: 4, md: 4 }}>
         <Stack spacing={2}>
           <ImageBox
-            image={"/appimages/ad.png"}
+            image={"/ad.png"}
             bgColor="#FFE5CC" // Light blueish background
             height={{
               xs: "175px", // Small devices
@@ -85,7 +85,7 @@ const Layout_1 = () => {
       <Grid item xs={6} md={3} order={{ xs: 4, md: 4 }}>
         <Stack spacing={2}>
           <ImageBox
-            image={"/appimages/ear.png"}
+            image={"/ear.png"}
             bgColor="#D0F5F5" // Light blueish background
             height={{
               xs: "175px", // Small devices
@@ -100,7 +100,7 @@ const Layout_1 = () => {
       <Grid item xs={6} md={3} order={{ xs: 5, md: 15 }}>
         <Stack spacing={2}>
           <ImageBox
-            image={"/appimages/box1.png"}
+            image={"/box1.png"}
             bgColor="#E0E0E0" // Light blueish background
             height={{
               xs: "80px", // Small devices
@@ -111,7 +111,7 @@ const Layout_1 = () => {
             url="/jewels/list/Necklace"
           />
           <ImageBox
-            image={"/appimages/bangles.png"}
+            image={"/bangles.png"}
             bgColor="#FAD4E8" // Light blueish background
             height={{
               xs: "80px", // Small devices

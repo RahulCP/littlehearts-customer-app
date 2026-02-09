@@ -1,25 +1,35 @@
 // src/utils/imageHelpers.js
-import { IMAGE_URL } from "../config/constants";
+import { V2IMG_BASE_URL } from "../config/constants";
 
 /**
- * Safely builds a full image URL from a relative path.
+ * Build a full image URL from a storageKey or partial path.
+ *
+ * Accepts:
+ *  - stores/illolam/products/xxx.jpg
+ *  - /stores/illolam/products/xxx.jpg
+ *  - already-full https://...
  */
 export const buildImageUrl = (imgPath) => {
-  if (!imgPath) return null;
+  if (!imgPath) return "";
 
-  const cleanPath = imgPath.startsWith("/") ? imgPath.substring(1) : imgPath;
+  // If already a full URL, return as-is
+  if (/^https?:\/\//i.test(imgPath)) {
+    return imgPath;
+  }
 
-  const cleanBase = IMAGE_URL.endsWith("/")
-    ? IMAGE_URL.slice(0, -1)
-    : IMAGE_URL;
+  // Normalize path
+  const cleanPath = String(imgPath)
+    .trim()
+    .replace(/^\/+/, "")     // remove leading /
+    .replace(/^v2img\//, ""); // avoid double v2img
 
-  return `${cleanBase}/${cleanPath}`;
+  return `${V2IMG_BASE_URL}/${cleanPath}`;
 };
 
 /**
- * Safely normalize array of product images.
+ * Normalize an array of image paths/storageKeys
  */
 export const normalizeImages = (images) => {
   if (!Array.isArray(images)) return [];
-  return images.map((img) => buildImageUrl(img));
+  return images.map(buildImageUrl).filter(Boolean);
 };

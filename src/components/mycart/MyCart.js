@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { buildImageUrl } from "../../utils/imageHelpers"; // ✅ adjust path if needed
 
 /* ---------------- CART HELPERS ---------------- */
 function getCartStorageKey(slug) {
@@ -30,21 +31,6 @@ function money(n) {
   return v.toFixed(2);
 }
 
-function normalizeImgUrl(url) {
-  if (!url) return null;
-
-  const IMG_BASE = "http://192.168.1.38:5002/img";
-
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-
-  let clean = url;
-  if (clean.startsWith("/img/")) clean = clean.replace("/img", "");
-  if (clean.startsWith("img/")) clean = clean.replace("img", "");
-  if (!clean.startsWith("/")) clean = `/${clean}`;
-
-  return `${IMG_BASE}${clean}`;
-}
-
 /* ---------------- UI HELPERS ---------------- */
 const FONT_STACK =
   'ui-sans-serif, system-ui, -apple-system, "SF Pro Display", "SF Pro Text", "Inter", "Segoe UI", Roboto, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji"';
@@ -56,24 +42,32 @@ function isNumberLike(v) {
 
 /**
  * Tries to build a product-details route from whatever is available in cart line.
- * Adjust to match your actual routing shape.
- *
- * Preferred fields (if present in line):
- * - product_uid (UUID) OR product_id
- * - product_slug (string)
  */
 function buildProductUrl(slug, line) {
   const productUid = line?.product_uid || line?.productId || line?.product_id;
   const productSlug = line?.product_slug || line?.productSlug;
 
-  // ✅ If your app uses product_uid route:
   if (productUid) return `/${slug}/product/${productUid}`;
-
-  // ✅ If your app uses productSlug route:
   if (productSlug) return `/${slug}/product/${productSlug}`;
-
-  // Fallback: go to products listing
   return `/${slug}/products`;
+}
+
+/**
+ * ✅ Extract best image token from cart line
+ * Supports:
+ *  - line.image (your old field)
+ *  - line.image_key / line.storageKey
+ *  - line.images[0]
+ *  - full URL already stored
+ */
+function pickCartImage(line) {
+  return (
+    line?.image ||
+    line?.image_key ||
+    line?.storageKey ||
+    (Array.isArray(line?.images) ? line.images[0] : "") ||
+    ""
+  );
 }
 
 export default function MyCart() {
@@ -156,23 +150,15 @@ export default function MyCart() {
   };
 
   const goLogin = () => navigate(`/${slug}/login`);
-
-  // ✅ Continue Shopping should take to products page
   const continueShopping = () => navigate(`/${slug}/products`);
 
-  // ✅ Product title click -> go to that product page
   const openProduct = (line) => {
     const url = buildProductUrl(slug, line);
     navigate(url);
   };
 
   const styles = {
-    page: {
-      padding: 16,
-      maxWidth: 980,
-      margin: "0 auto",
-      fontFamily: FONT_STACK,
-    },
+    page: { padding: 16, maxWidth: 980, margin: "0 auto", fontFamily: FONT_STACK },
     toast: {
       position: "fixed",
       right: 20,
@@ -187,7 +173,6 @@ export default function MyCart() {
       maxWidth: 320,
       fontFamily: FONT_STACK,
     },
-
     headerRow: {
       display: "flex",
       alignItems: "center",
@@ -196,14 +181,7 @@ export default function MyCart() {
       flexWrap: "wrap",
       marginBottom: 10,
     },
-    h1: {
-      margin: 0,
-      fontSize: 22,
-      fontWeight: 900,
-      letterSpacing: "-0.02em",
-      lineHeight: 1.15,
-    },
-
+    h1: { margin: 0, fontSize: 22, fontWeight: 900, letterSpacing: "-0.02em", lineHeight: 1.15 },
     btn: {
       padding: "10px 12px",
       borderRadius: 12,
@@ -214,7 +192,6 @@ export default function MyCart() {
       fontSize: 13,
       fontFamily: FONT_STACK,
     },
-
     emptyCard: {
       marginTop: 18,
       padding: 18,
@@ -259,9 +236,7 @@ export default function MyCart() {
       color: "#0f766e",
       fontFamily: FONT_STACK,
     },
-
     contentGrid: { marginTop: 14, display: "grid", gap: 12 },
-
     lineCard: {
       border: "1px solid #eee",
       borderRadius: 16,
@@ -319,7 +294,6 @@ export default function MyCart() {
       borderRadius: 999,
       fontWeight: 800,
     },
-
     footerBar: {
       display: "flex",
       justifyContent: "space-between",
@@ -355,7 +329,6 @@ export default function MyCart() {
     price: { fontWeight: 950, fontSize: 14, margin: 0 },
     lineTotal: { fontWeight: 1000, fontSize: 16, margin: "2px 0 0" },
     muted: { fontSize: 12, color: "#6b7280" },
-
     summaryWrap: {
       marginTop: 14,
       position: "sticky",
@@ -378,7 +351,6 @@ export default function MyCart() {
     totalRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline" },
     totalLabel: { color: "#111", fontWeight: 950, fontSize: 13 },
     totalVal: { fontWeight: 1000, fontSize: 18 },
-
     buyBtn: {
       width: "100%",
       marginTop: 12,
@@ -392,7 +364,6 @@ export default function MyCart() {
       fontSize: 15,
       fontFamily: FONT_STACK,
     },
-
     note: { margin: "10px 0 0", fontSize: 12, color: "#6b7280", lineHeight: 1.35 },
   };
 
@@ -400,7 +371,6 @@ export default function MyCart() {
     <div style={styles.page}>
       {toast && <div style={styles.toast}>{toast}</div>}
 
-      {/* Header: show Continue Shopping only when cart has items */}
       <div style={styles.headerRow}>
         <div>
           <h1 style={styles.h1}>My Cart</h1>
@@ -413,7 +383,6 @@ export default function MyCart() {
         ) : null}
       </div>
 
-      {/* Empty state */}
       {!cart.length ? (
         <div style={styles.emptyCard}>
           <h2 style={styles.emptyTitle}>Your cart is empty</h2>
@@ -423,21 +392,20 @@ export default function MyCart() {
             <button onClick={continueShopping} style={styles.primaryBtn}>
               Continue shopping
             </button>
-            <button onClick={goLogin} style={styles.ghostBtn}>
+            <button onClick={() => navigate(`/${slug}/login`)} style={styles.ghostBtn}>
               Log in
             </button>
           </div>
 
           <div style={styles.subtleRow}>
             Have an account?
-            <button onClick={goLogin} style={styles.linkBtn}>
+            <button onClick={() => navigate(`/${slug}/login`)} style={styles.linkBtn}>
               Log in to check out faster.
             </button>
           </div>
         </div>
       ) : (
         <>
-          {/* Cart lines */}
           <div style={styles.contentGrid}>
             {cart.map((line) => {
               const qty = Number(line.quantity || 1);
@@ -447,15 +415,22 @@ export default function MyCart() {
               const stock = line.stocked_quantity == null ? null : Number(line.stocked_quantity);
               const hasStock = stock != null && Number.isFinite(stock);
 
+              const imgToken = pickCartImage(line);
+              const imgSrc = buildImageUrl(imgToken);
+
               return (
                 <div key={`${line.store_slug}-${line.item_uid}`} style={styles.lineCard}>
                   <div style={styles.lineInner}>
                     <div style={styles.imgBox}>
-                      {line.image ? (
+                      {imgSrc ? (
                         <img
-                          src={normalizeImgUrl(line.image)}
+                          src={imgSrc}
                           alt={line.product_label || "product"}
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={(e) => {
+                            // optional: hide broken images
+                            e.currentTarget.style.display = "none";
+                          }}
                         />
                       ) : (
                         <span style={{ fontSize: 12, color: "#6b7280", fontWeight: 800 }}>
@@ -467,14 +442,13 @@ export default function MyCart() {
                     <div style={{ minWidth: 0 }}>
                       <div style={styles.nameRow}>
                         <div style={{ minWidth: 0 }}>
-                          {/* ✅ Clickable product name */}
                           <p
                             style={styles.nameLink}
                             role="button"
                             tabIndex={0}
-                            onClick={() => openProduct(line)}
+                            onClick={() => navigate(buildProductUrl(slug, line))}
                             onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") openProduct(line);
+                              if (e.key === "Enter" || e.key === " ") navigate(buildProductUrl(slug, line));
                             }}
                             title="View product"
                           >
@@ -524,7 +498,6 @@ export default function MyCart() {
             })}
           </div>
 
-          {/* Summary */}
           <div style={styles.summaryWrap}>
             <div style={styles.summaryCard}>
               <p style={styles.summaryTitle}>Order Summary</p>
