@@ -10,11 +10,11 @@ const PUBLIC_PATH = isProd ? "/store/" : "/";
 
 module.exports = {
   entry: "./src/index.js",
-  output: {
-    path: path.resolve(__dirname, "dist"),
-    filename: "bundle.[contenthash].js",
-    publicPath: PUBLIC_PATH, // ✅ IMPORTANT
-  },
+output: {
+  path: path.resolve(__dirname, "dist"),
+  filename: "bundle.[contenthash].js",
+  publicPath: "/store/",   // ✅ IMPORTANT
+},
   module: {
     rules: [
       {
@@ -39,13 +39,13 @@ module.exports = {
   resolve: {
     extensions: [".js", ".jsx"],
   },
-  plugins: [
-    new HtmlWebpackPlugin({
-      template: "./src/index.html",
-      publicPath: PUBLIC_PATH, // ✅ IMPORTANT
-    }),
-    new CleanWebpackPlugin(),
-  ],
+plugins: [
+  new HtmlWebpackPlugin({
+    template: "./src/index.html",
+    publicPath: "/store/", // ✅ IMPORTANT
+  }),
+  new CleanWebpackPlugin(),
+],
   devServer: {
     static: path.join(__dirname, "dist"),
     compress: true,
