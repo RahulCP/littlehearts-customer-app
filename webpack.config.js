@@ -1,53 +1,57 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const { CleanWebpackPlugin } = require('clean-webpack-plugin');
+// webpack.config.js
+const path = require("path");
+const HtmlWebpackPlugin = require("html-webpack-plugin");
+const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
+const isProd = process.env.NODE_ENV === "production";
+
+// Customer app is mounted at /store/ in nginx
+const PUBLIC_PATH = isProd ? "/store/" : "/";
 
 module.exports = {
-  entry: './src/index.js',
+  entry: "./src/index.js",
   output: {
-    path: path.resolve(__dirname, 'dist'),
-    filename: 'bundle.[contenthash].js', // Cache-busting for JS
-    publicPath: '/', // This ensures that paths are resolved correctly
+    path: path.resolve(__dirname, "dist"),
+    filename: "bundle.[contenthash].js",
+    publicPath: PUBLIC_PATH, // ✅ IMPORTANT
   },
   module: {
     rules: [
       {
         test: /\.(js|jsx)$/,
         exclude: /node_modules/,
-        use: 'babel-loader',
+        use: "babel-loader",
       },
       {
         test: /\.(png|jpg|jpeg|gif|svg)$/,
-        type: 'asset/resource',
+        type: "asset/resource",
         generator: {
-          filename: 'assets/images/[name].[hash][ext]',
+          filename: "assets/images/[name].[hash][ext]",
+          publicPath: PUBLIC_PATH, // ✅ makes image urls also respect /store/
         },
       },
       {
         test: /\.css$/,
-        use: ['style-loader', 'css-loader'],
+        use: ["style-loader", "css-loader"],
       },
     ],
   },
   resolve: {
-    extensions: ['.js', '.jsx'],
+    extensions: [".js", ".jsx"],
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: './src/index.html',
-      publicPath: '/', // Ensures correct path resolution
+      template: "./src/index.html",
+      publicPath: PUBLIC_PATH, // ✅ IMPORTANT
     }),
-    new CleanWebpackPlugin()
+    new CleanWebpackPlugin(),
   ],
   devServer: {
-    static: path.join(__dirname, 'dist'), // Serve from 'dist' during development
+    static: path.join(__dirname, "dist"),
     compress: true,
     port: 9005,
     historyApiFallback: true,
   },
-  devtool: 'source-map', // Enable source maps for debugging
-  stats: {
-    children: true,
-  },
+  devtool: "source-map",
+  stats: { children: true },
 };
