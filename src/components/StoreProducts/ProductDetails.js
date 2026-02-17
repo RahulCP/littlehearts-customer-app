@@ -438,10 +438,10 @@ const ProductDetails = () => {
 
         quantity: 1,
       };
-
-      navigate(`/${effectiveSlug}/checkout`, {
+      navigate(`/store/${effectiveSlug}/checkout`, {
         state: { buyNowItems: [buyNowLine], buyNow: true },
       });
+
     } catch (e) {
       console.error(e);
       setToast("Failed to proceed to checkout.");
