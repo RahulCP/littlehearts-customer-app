@@ -3,18 +3,18 @@ const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
 
-const isProd = process.env.NODE_ENV === "production";
-
-// Customer app is mounted at /store/ in nginx
-const PUBLIC_PATH = isProd ? "/store/" : "/";
+// If you WANT dev URL to be /store/... then public path must be /store/ in dev too
+const PUBLIC_PATH = "/store/";
 
 module.exports = {
   entry: "./src/index.js",
-output: {
-  path: path.resolve(__dirname, "dist"),
-  filename: "bundle.[contenthash].js",
-  publicPath: "/store/",   // ✅ IMPORTANT
-},
+
+  output: {
+    path: path.resolve(__dirname, "dist"),
+    filename: "bundle.[contenthash].js",
+    publicPath: PUBLIC_PATH,
+  },
+
   module: {
     rules: [
       {
@@ -27,31 +27,43 @@ output: {
         type: "asset/resource",
         generator: {
           filename: "assets/images/[name].[hash][ext]",
-          publicPath: PUBLIC_PATH, // ✅ makes image urls also respect /store/
+          publicPath: PUBLIC_PATH,
         },
       },
-      {
-        test: /\.css$/,
-        use: ["style-loader", "css-loader"],
-      },
+      { test: /\.css$/, use: ["style-loader", "css-loader"] },
     ],
   },
-  resolve: {
-    extensions: [".js", ".jsx"],
-  },
-plugins: [
-  new HtmlWebpackPlugin({
-    template: "./src/index.html",
-    publicPath: "/store/", // ✅ IMPORTANT
-  }),
-  new CleanWebpackPlugin(),
-],
+
+  resolve: { extensions: [".js", ".jsx"] },
+
+  plugins: [
+    new HtmlWebpackPlugin({
+      template: "./src/index.html",
+      publicPath: PUBLIC_PATH,
+    }),
+    new CleanWebpackPlugin(),
+  ],
+
   devServer: {
-    static: path.join(__dirname, "dist"),
+    static: {
+      directory: path.join(__dirname, "dist"),
+      publicPath: PUBLIC_PATH,
+    },
+    devMiddleware: {
+      publicPath: PUBLIC_PATH,
+    },
+
     compress: true,
     port: 9005,
-    historyApiFallback: true,
+    host: "0.0.0.0",
+    allowedHosts: "all",
+
+    // ✅ THIS is the key for /store/illolam refresh
+    historyApiFallback: {
+      index: PUBLIC_PATH,
+    },
   },
+
   devtool: "source-map",
   stats: { children: true },
 };
