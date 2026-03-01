@@ -21,6 +21,7 @@ import StoreProductsNew from "./components/StoreFront/SalesList";
 import StoreProductDetails from "./components/StoreProducts/ProductDetails";
 import MyCart from "./components/mycart/MyCart";
 import Checkout from "./components/checkout/Checkout";
+import Confirmation from "./components/checkout/Confirmation";
 
 const ImageCacheContext = createContext();
 export const useImageCache = () => useContext(ImageCacheContext);
@@ -152,7 +153,7 @@ function App() {
                     path="/store/:slug/checkout"
                     element={<Checkout />}
                   />
-
+                  <Route path="/store/:slug/confirmation" element={<Confirmation />} />
                   {/* Fallback */}
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
