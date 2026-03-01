@@ -66,7 +66,8 @@ export default function Checkout() {
   // ✅ NEW (mobile UX): if false, receiver fields are hidden and we’ll use buyer as receiver
   const [sendToDifferentPerson, setSendToDifferentPerson] = useState(false);
 
-  const [paymentMethod, setPaymentMethod] = useState("PAYTM");
+  // ✅ PhonePe ONLY
+  const [paymentMethod, setPaymentMethod] = useState("PHONEPE");
 
   // cart
   const { cart, isBuyNow, subtotal, totalItems, updateQty } = useCheckoutCart({
@@ -194,7 +195,7 @@ export default function Checkout() {
     return rows;
   }
 
-  /* ------------ order + paytm ------------ */
+  /* ------------ order create ------------ */
   async function createOrder() {
     const items = cart.map((x) => ({
       item_uid: x.item_uid, // ✅ your sales.service resolves item_uid -> product_item_id
@@ -202,23 +203,16 @@ export default function Checkout() {
     }));
 
     const shipping_address = buildShippingAddress();
-
-    // for now: billing same as shipping (you can add UI later)
-    const billing_address = { ...shipping_address };
-
+    const billing_address = { ...shipping_address }; // for now: same as shipping
     const discounts = buildDiscountRows();
 
     const payload = {
       buyer,
       items,
-
       shipping_address,
       billing_address,
-
-      discounts, // ✅ THIS is why sales_order_discounts will now insert
-
-      // optional fields (safe to include)
-      payment_mode: paymentMethod,
+      discounts,
+      payment_mode: "PHONEPE",
       customer_note: "",
     };
 
@@ -227,51 +221,76 @@ export default function Checkout() {
     if (customerToken) headers.Authorization = `Bearer ${customerToken}`;
 
     const res = await axios.post(url, payload, { headers });
-    return res.data; // your API returns hydrated object (order/items/addresses/discounts)
-  }
-
-  async function initiatePaytm(orderHydrated) {
-    // depends on your paytm routes; usually needs order_uid + amount
-    const order = orderHydrated?.order || {};
-    const url = `${API_BASE_URL}/store/${encodeURIComponent(slug)}/paytm/initiate`;
-    const headers = {};
-    if (customerToken) headers.Authorization = `Bearer ${customerToken}`;
-
-    const res = await axios.post(
-      url,
-      {
-        order_uid: order.order_uid, // ensure your sales_orders has order_uid (UUID)
-        amount: order.grand_total,
-        buyer,
-      },
-      { headers }
-    );
-
     return res.data;
   }
 
-  function redirectToGateway(gw) {
-    if (!gw?.redirectUrl) throw new Error("Payment gateway response missing redirectUrl");
-    const method = (gw.method || "POST").toUpperCase();
-    const params = gw.params || {};
+  /* ------------ PhonePe ONLY (aligned) ------------ */
+  async function getPhonePeToken() {
+    const savedToken = localStorage.getItem("phonepe_auth_token");
+    const savedExp = Number(localStorage.getItem("phonepe_auth_token_expires_at") || 0);
+    const now = Math.floor(Date.now() / 1000);
 
-    const form = document.createElement("form");
-    form.method = method;
-    form.action = gw.redirectUrl;
+    // 30s buffer
+    if (savedToken && savedExp && now < savedExp - 30) return savedToken;
 
-    Object.entries(params).forEach(([k, v]) => {
-      const inp = document.createElement("input");
-      inp.type = "hidden";
-      inp.name = k;
-      inp.value = String(v ?? "");
-      form.appendChild(inp);
-    });
+    const url = `${API_BASE_URL}/store/${encodeURIComponent(slug)}/phonepe/fetchAuthToken`;
+    const { data } = await axios.post(url);
 
-    document.body.appendChild(form);
-    form.submit();
-    form.remove();
+    const token = data?.access_token;
+    const exp = data?.expires_at;
+
+    if (!token) throw new Error("PhonePe auth token missing in response.");
+
+    localStorage.setItem("phonepe_auth_token", token);
+    if (exp) localStorage.setItem("phonepe_auth_token_expires_at", String(exp));
+
+    return token;
   }
 
+  async function initiatePhonePePayment(orderHydrated) {
+    const order = orderHydrated?.order || {};
+
+    // pick stable id for merchantOrderId
+    const transactionId = order.order_uid || order.order_id || orderHydrated?.order_uid;
+    if (!transactionId) throw new Error("Missing order id to send as merchantOrderId.");
+
+    const accessToken = await getPhonePeToken();
+
+    // where PhonePe should redirect back after payment
+    const redirectUrl =
+      `${window.location.origin}/store/${encodeURIComponent(slug)}/confirmation?transactionId=${encodeURIComponent(
+        transactionId
+      )}`;
+
+    const payload = {
+      amount: Number(order.grand_total || 0), // rupees; backend converts to paise
+      transactionId,
+      customerMobile: buyer.phone,
+      redirectUrl,
+      email: buyer.email,
+      name: buyer.name,
+      accessToken,
+    };
+
+    const url = `${API_BASE_URL}/store/${encodeURIComponent(slug)}/phonepe/initiate-payment`;
+    const { data } = await axios.post(url, payload);
+
+    // Try multiple known shapes
+    const direct =
+      data?.redirectUrl ||
+      data?.data?.redirectUrl ||
+      data?.data?.instrumentResponse?.redirectInfo?.url ||
+      data?.instrumentResponse?.redirectInfo?.url;
+
+    if (!direct) {
+      console.error("[phonepe] unexpected response", data);
+      throw new Error("PhonePe did not return a redirect URL.");
+    }
+
+    window.location.href = direct;
+  }
+
+  /* ------------ pay now ------------ */
   const onPayNow = async () => {
     try {
       if (!cart.length) return setToast("Cart is empty.");
@@ -295,16 +314,16 @@ export default function Checkout() {
 
       const orderHydrated = await createOrder();
 
-      if (paymentMethod === "PAYTM") {
-        const gw = await initiatePaytm(orderHydrated);
-        redirectToGateway(gw);
-        return;
-      }
-
-      setToast("Payment method not wired yet.");
+      // ✅ PhonePe ONLY
+      await initiatePhonePePayment(orderHydrated);
     } catch (e) {
       console.error(e);
-      setToast(e?.response?.data?.error || e?.response?.data?.message || e.message || "Payment failed");
+      setToast(
+        e?.response?.data?.error ||
+          e?.response?.data?.message ||
+          e.message ||
+          "Payment failed"
+      );
     } finally {
       setLoading(false);
     }
@@ -362,6 +381,7 @@ export default function Checkout() {
           setAddress={setAddress}
           sendToDifferentPerson={sendToDifferentPerson}
           setSendToDifferentPerson={setSendToDifferentPerson}
+          // keep props (but PhonePe only)
           paymentMethod={paymentMethod}
           setPaymentMethod={setPaymentMethod}
           // validations + totals
@@ -383,6 +403,7 @@ export default function Checkout() {
           setBuyer={setBuyer}
           address={address}
           setAddress={setAddress}
+          // keep props (but PhonePe only)
           paymentMethod={paymentMethod}
           setPaymentMethod={setPaymentMethod}
           // cart + summary
