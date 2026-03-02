@@ -2,28 +2,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-
 import { API_BASE_URL } from "../../config/constants";
 
-/**
- * Confirmation page (self-contained)
- * - Reads :slug from route: /store/:slug/confirmation
- * - Reads transactionId from query: ?transactionId=...
- * - Polls DB status endpoint for up to MAX_POLL_MS
- * - Falls back to PhonePe order status check via backend
- *
- * IMPORTANT:
- * 1) Ensure backend has DB status endpoint:
- *    GET /store/:slug/orders/status/:transactionId
- *    returns { salesStatus: "SC" } or { status: "SC" } etc.
- *
- * 2) Ensure backend has PhonePe status endpoint:
- *    GET /store/:slug/phonepe/status?merchantOrderId=...
- *    uses Authorization: O-Bearer <token> (optional)
- */
-
-const MAX_POLL_MS = 60_000; // 60 seconds
-const POLL_INTERVAL_MS = 4_000; // 4 seconds
+const MAX_POLL_MS = 60_000;
+const POLL_INTERVAL_MS = 4_000;
 
 const styles = {
   page: {
@@ -34,23 +16,14 @@ const styles = {
     alignItems: "flex-start",
     background: "#f6f7fb",
   },
-  wrap: {
-    width: "100%",
-    maxWidth: 760,
-    marginTop: 24,
-  },
+  wrap: { width: "100%", maxWidth: 760, marginTop: 24 },
   card: {
     background: "#fff",
     borderRadius: 16,
     boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
     padding: 18,
   },
-  title: {
-    margin: 0,
-    fontSize: 22,
-    fontWeight: 800,
-    textAlign: "center",
-  },
+  title: { margin: 0, fontSize: 22, fontWeight: 800, textAlign: "center" },
   muted: {
     marginTop: 8,
     color: "#555",
@@ -100,11 +73,7 @@ const styles = {
     color: "#9a3412",
     fontSize: 14,
   },
-  loaderWrap: {
-    marginTop: 16,
-    display: "flex",
-    justifyContent: "center",
-  },
+  loaderWrap: { marginTop: 16, display: "flex", justifyContent: "center" },
   loader: {
     width: 46,
     height: 46,
@@ -115,44 +84,48 @@ const styles = {
   },
 };
 
+function normalizeNewStatus(v) {
+  const s = String(v || "").trim().toUpperCase();
+  if (s === "SUCCESS") return "SUCCESS";
+  if (s === "FAILURE" || s === "FAILED") return "FAILED";
+  if (s === "PENDING") return "PENDING";
+  return null;
+}
+
 export default function Confirmation() {
   const { slug } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
 
-  const qp = useMemo(() => new URLSearchParams(location.search), [location.search]);
-  const transactionId = qp.get("transactionId") || "";
+  const transactionId = useMemo(() => {
+    const qp = new URLSearchParams(location.search);
+    return qp.get("transactionId") || "";
+  }, [location.search]);
 
   const [toast, setToast] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [checking, setChecking] = useState(true);
-  const [paymentStatus, setPaymentStatus] = useState(null); // "SUCCESS" | "FAILED" | null
+  const [phase, setPhase] = useState("LOADING"); // LOADING | SUCCESS | FAILED
+  const [isFinalVerify, setIsFinalVerify] = useState(false);
 
   const startedAtRef = useRef(Date.now());
   const timerRef = useRef(null);
 
-  function stopTimer() {
+  const stopTimer = () => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
-  }
+  };
 
-  function normalizeDbStatus(s) {
-    const v = String(s || "").trim().toUpperCase();
-    // your webhook code uses SC/SF
-    if (v === "SC" || v === "SUCCESS" || v === "COMPLETED") return "SUCCESS";
-    if (v === "SF" || v === "FAILED" || v === "FAILURE") return "FAILED";
-    return null;
-  }
+  const fetchDbStatus = async () => {
+    // ✅ NEW TABLE endpoint
+    const url = `${API_BASE_URL}/store/${encodeURIComponent(
+      slug
+    )}/phonepe/db-status/${encodeURIComponent(transactionId)}`;
 
-  async function fetchDbStatus() {
-    const url = `${API_BASE_URL}/store/${encodeURIComponent(slug)}/orders/status/${encodeURIComponent(
-      transactionId
-    )}`;
     const { data } = await axios.get(url);
-    return normalizeDbStatus(data?.salesStatus || data?.status || data?.sales_status);
-  }
+    // expected: { success:true, salesStatus:"PENDING|SUCCESS|FAILURE" }
+    return normalizeNewStatus(data?.salesStatus);
+  };
 
-  async function checkPhonePeFinalStatus() {
+  const checkPhonePeFinalStatus = async () => {
     const accessToken = localStorage.getItem("phonepe_auth_token");
     const headers = {};
     if (accessToken) headers.Authorization = `O-Bearer ${accessToken}`;
@@ -174,13 +147,11 @@ export default function Confirmation() {
     if (v === "COMPLETED" || v === "SUCCESS") return "SUCCESS";
     if (v === "FAILED" || v === "FAILURE") return "FAILED";
     return null;
-  }
+  };
 
   useEffect(() => {
     if (!transactionId) {
-      setLoading(false);
-      setChecking(false);
-      setPaymentStatus("FAILED");
+      setPhase("FAILED");
       setToast("Missing transactionId in URL.");
       return;
     }
@@ -192,22 +163,43 @@ export default function Confirmation() {
 
       const elapsed = Date.now() - startedAtRef.current;
 
-      // time limit -> fallback to PhonePe API check
+      // 1) Try DB status first (fast + your source of truth)
+      try {
+        const st = await fetchDbStatus();
+        if (cancelled) return;
+
+        if (st === "SUCCESS") {
+          setPhase("SUCCESS");
+          stopTimer();
+          return;
+        }
+        if (st === "FAILED") {
+          setPhase("FAILED");
+          stopTimer();
+          return;
+        }
+        // PENDING => keep polling
+      } catch (e) {
+        // ignore and continue polling
+      }
+
+      // 2) Time limit reached => final verify using PhonePe status API
       if (elapsed >= MAX_POLL_MS) {
         try {
-          setChecking(false);
+          setIsFinalVerify(true);
           const finalSt = await checkPhonePeFinalStatus();
           if (cancelled) return;
 
-          if (finalSt) setPaymentStatus(finalSt);
+          if (finalSt === "SUCCESS") setPhase("SUCCESS");
+          else if (finalSt === "FAILED") setPhase("FAILED");
           else {
-            setPaymentStatus("FAILED");
+            setPhase("FAILED");
             setToast("Could not confirm payment. If amount is debited, contact support.");
           }
         } catch (e) {
           console.error("[confirmation] phonepe status error", e?.response?.data || e.message);
           if (!cancelled) {
-            setPaymentStatus("FAILED");
+            setPhase("FAILED");
             setToast(
               e?.response?.data?.message ||
                 e?.response?.data?.error ||
@@ -215,28 +207,9 @@ export default function Confirmation() {
             );
           }
         } finally {
-          if (!cancelled) {
-            setLoading(false);
-            stopTimer();
-          }
+          stopTimer();
         }
         return;
-      }
-
-      // DB polling
-      try {
-        const st = await fetchDbStatus();
-        if (cancelled) return;
-
-        if (st === "SUCCESS" || st === "FAILED") {
-          setPaymentStatus(st);
-          setLoading(false);
-          setChecking(false);
-          stopTimer();
-          return;
-        }
-      } catch (e) {
-        // keep polling
       }
 
       timerRef.current = setTimeout(tick, POLL_INTERVAL_MS);
@@ -252,16 +225,16 @@ export default function Confirmation() {
   }, [slug, transactionId]);
 
   const title = useMemo(() => {
-    if (loading) return "We are checking your payment…";
-    if (paymentStatus === "SUCCESS") return "Order Confirmed!";
+    if (phase === "LOADING") return "We are checking your payment…";
+    if (phase === "SUCCESS") return "Order Confirmed!";
     return "Payment Failed";
-  }, [loading, paymentStatus]);
+  }, [phase]);
 
   const titleColor = useMemo(() => {
-    if (loading) return "#111827";
-    if (paymentStatus === "SUCCESS") return "#16a34a";
+    if (phase === "LOADING") return "#111827";
+    if (phase === "SUCCESS") return "#16a34a";
     return "#dc2626";
-  }, [loading, paymentStatus]);
+  }, [phase]);
 
   return (
     <div style={styles.page}>
@@ -279,11 +252,11 @@ export default function Confirmation() {
             </div>
           ) : null}
 
-          {loading ? (
+          {phase === "LOADING" ? (
             <>
               <p style={styles.muted}>
                 Please don’t refresh or press back. This may take a few moments.
-                {checking ? " We’ll update you shortly." : " We’re doing a final verification."}
+                {isFinalVerify ? " We’re doing a final verification." : " We’ll update you shortly."}
               </p>
 
               <div style={styles.loaderWrap}>
@@ -292,7 +265,7 @@ export default function Confirmation() {
 
               <style>{`@keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }`}</style>
             </>
-          ) : paymentStatus === "SUCCESS" ? (
+          ) : phase === "SUCCESS" ? (
             <>
               <p style={{ ...styles.muted, fontSize: 15 }}>
                 🎉 Your order has been placed successfully. We’ll start processing it shortly.
