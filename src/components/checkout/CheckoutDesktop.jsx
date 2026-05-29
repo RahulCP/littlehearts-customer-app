@@ -16,6 +16,8 @@ export default function CheckoutDesktop({
   setBuyer,
   address,
   setAddress,
+  sendToDifferentPerson,
+  setSendToDifferentPerson,
 
   paymentMethod,
   setPaymentMethod,
@@ -55,8 +57,11 @@ export default function CheckoutDesktop({
           {step === 2 && (
             <AddressStep
               S={S}
+              buyer={buyer}
               address={address}
               setAddress={setAddress}
+              sendToDifferentPerson={sendToDifferentPerson}
+              setSendToDifferentPerson={setSendToDifferentPerson}
               canGoStep3={canGoStep3}
               onBack={() => setStep(1)}
               onNext={() => setStep(3)}
@@ -66,8 +71,9 @@ export default function CheckoutDesktop({
           {step === 3 && (
             <ReviewStep
               S={S}
-              paymentMethod={paymentMethod}
-              setPaymentMethod={setPaymentMethod}
+              buyer={buyer}
+              address={address}
+              sendToDifferentPerson={sendToDifferentPerson}
               loading={loading}
               onBack={() => setStep(2)}
               onPayNow={onPayNow}

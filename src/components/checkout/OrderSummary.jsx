@@ -1,5 +1,26 @@
 import React from "react";
 import { money, toInt } from "./checkoutUtils";
+import { buildImageUrl } from "../../utils/imageHelpers";
+
+function formatDiscount(discount) {
+  if (!discount) return "";
+  const type = String(discount.discount_type || "").toUpperCase();
+  const value = Number(discount.discount_value || 0);
+  if (type === "PERCENT") return `${money(value).replace(/\.00$/, "")}% off`;
+  if (type === "FLAT") return `₹${money(value)} off`;
+  if (type === "FREE_GIFT") return "Free gift";
+  return "Offer";
+}
+
+function pickCartImage(line) {
+  return (
+    line?.image ||
+    line?.image_key ||
+    line?.storageKey ||
+    (Array.isArray(line?.images) ? line.images[0] : "") ||
+    ""
+  );
+}
 
 export default function OrderSummary({
   S,
@@ -15,6 +36,7 @@ export default function OrderSummary({
 
   // auto
   autoName,
+  autoApplied,
   autoDiscount,
 
   // manual
@@ -42,46 +64,73 @@ export default function OrderSummary({
         <div style={{ fontSize: 16, fontWeight: 900 }}>Order Summary</div>
         <div style={S.muted}>{totalItems} items</div>
       </div>
-
-      {/* Coupons row */}
      
       {/* Cart lines */}
       <div style={{ marginTop: 10, display: "grid", gap: 10, maxHeight: 320, overflow: "auto" }}>
-        {cart.map((x) => (
-          <div
-            key={x.item_uid}
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto",
-              gap: 10,
-              padding: "10px 10px",
-              border: "1px solid #eee",
-              borderRadius: 12,
-              background: "#fafafa",
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 4 }}>{x.product_label || "Product"}</div>
+        {cart.map((x) => {
+          const imgSrc = buildImageUrl(pickCartImage(x));
 
-              <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
-                <button onClick={() => updateQty(x.item_uid, -1)} style={S.miniBtn} type="button">
-                  –
-                </button>
-                <div style={{ fontWeight: 900, width: 26, textAlign: "center" }}>{toInt(x.quantity || 1, 1)}</div>
-                <button onClick={() => updateQty(x.item_uid, +1)} style={S.miniBtn} type="button">
-                  +
-                </button>
+          return (
+            <div
+              key={x.item_uid}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "54px 1fr auto",
+                gap: 10,
+                padding: "10px 10px",
+                border: "1px solid #eee",
+                borderRadius: 12,
+                background: "#fafafa",
+                alignItems: "center",
+              }}
+            >
+              <div
+                style={{
+                  width: 54,
+                  height: 54,
+                  borderRadius: 10,
+                  overflow: "hidden",
+                  background: "#f3f4f6",
+                  border: "1px solid #eee",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {imgSrc ? (
+                  <img
+                    src={imgSrc}
+                    alt={x.product_label || "Product"}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                ) : (
+                  <span style={{ fontSize: 10, color: "#777", fontWeight: 800 }}>No image</span>
+                )}
+              </div>
+
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 4 }}>{x.product_label || "Product"}</div>
+
+                <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
+                  <button onClick={() => updateQty(x.item_uid, -1)} style={S.miniBtn} type="button">
+                    –
+                  </button>
+                  <div style={{ fontWeight: 900, width: 26, textAlign: "center" }}>{toInt(x.quantity || 1, 1)}</div>
+                  <button onClick={() => updateQty(x.item_uid, +1)} style={S.miniBtn} type="button">
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 12, color: "#666" }}>₹{money(x.selling_price)}</div>
+                <div style={{ fontSize: 14, fontWeight: 900, marginTop: 6 }}>
+                  ₹{money(Number(x.selling_price || 0) * toInt(x.quantity || 1, 1))}
+                </div>
               </div>
             </div>
-
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 12, color: "#666" }}>₹{money(x.selling_price)}</div>
-              <div style={{ fontSize: 14, fontWeight: 900, marginTop: 6 }}>
-                ₹{money(Number(x.selling_price || 0) * toInt(x.quantity || 1, 1))}
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div style={{ height: 1, background: "#eee", margin: "12px 0" }} />
@@ -99,7 +148,7 @@ export default function OrderSummary({
       {/* Discounts (only if > 0) */}
       {Number(autoDiscount || 0) > 0 ? (
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-          <span style={S.muted}>{autoName ? `Offer: ${autoName}` : "Offer"}</span>
+          <span style={S.muted}>{autoName ? `Auto offer: ${autoName}` : "Auto offer"}</span>
           <strong>- ₹{money(autoDiscount)}</strong>
         </div>
       ) : null}

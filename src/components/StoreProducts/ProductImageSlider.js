@@ -38,9 +38,15 @@ const ProductImageSlider = ({ images = [], alt, height = 560 }) => {
 
   const [index, setIndex] = useState(0);
 
+  const listKey = useMemo(() => list.join("|"), [list]);
+
   useEffect(() => {
     setIndex(0);
-  }, [list.length]);
+  }, [listKey]);
+
+  useEffect(() => {
+    if (index >= list.length) setIndex(0);
+  }, [index, list.length]);
 
   const hasImages = list.length > 0;
 

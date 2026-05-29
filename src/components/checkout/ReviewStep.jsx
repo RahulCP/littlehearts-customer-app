@@ -1,40 +1,51 @@
 // src/pages/store/checkout/components/steps/ReviewStep.jsx
 import React from "react";
 
-export default function ReviewStep({ S, paymentMethod, setPaymentMethod, loading, onBack, onPayNow }) {
+export default function ReviewStep({
+  S,
+  buyer,
+  address,
+  sendToDifferentPerson,
+  loading,
+  onBack,
+  onPayNow,
+}) {
+  const recipientName = address?.receiver_name || buyer?.name;
+  const recipientPhone = address?.receiver_phone || buyer?.phone;
+  const recipientEmail = address?.receiver_email || buyer?.email;
+
   return (
     <>
       <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Review & Payment</h2>
-      <p style={{ ...S.muted, marginTop: 6 }}>
-        Auto offer (no code) and manual coupon (selected) can apply together. Final discount will be verified at payment.
-      </p>
 
-      <div style={{ marginTop: 14 }}>
-        <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 8 }}>Payment method</div>
+      <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
+        <div style={{ border: "1px solid #eee", borderRadius: 12, padding: 12, background: "#fafafa" }}>
+          <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 8 }}>Mailing details</div>
+          <div style={{ display: "grid", gap: 6, fontSize: 13 }}>
+            <div><strong>{recipientName || "-"}</strong></div>
+            <div style={S.muted}>{recipientPhone || "-"}</div>
+            {recipientEmail ? <div style={S.muted}>{recipientEmail}</div> : null}
+            <div style={S.muted}>
+              {[address?.address_line1, address?.address_line2, address?.city, address?.district, address?.state, address?.pincode]
+                .filter(Boolean)
+                .join(", ") || "-"}
+            </div>
+          </div>
+        </div>
 
-        <div style={{ display: "grid", gap: 10 }}>
-          <label
-            style={{
-              border: paymentMethod === "PAYTM" ? "1px solid #0f766e" : "1px solid #ddd",
-              background: paymentMethod === "PAYTM" ? "#e0f2f1" : "#fff",
-              padding: 12,
-              borderRadius: 12,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              fontWeight: 800,
-            }}
-          >
-            <input type="radio" checked={paymentMethod === "PAYTM"} onChange={() => setPaymentMethod("PAYTM")} />
-            Paytm (Card / UPI / Wallet)
-            <span style={{ marginLeft: "auto", color: "#555", fontWeight: 700, fontSize: 12 }}>Recommended</span>
-          </label>
-
-          <label style={{ border: "1px solid #eee", padding: 12, borderRadius: 12, opacity: 0.6 }}>
-            <input type="radio" disabled />
-            Cash on Delivery (Coming soon)
-          </label>
+        <div
+          style={{
+            border: "1px solid #d9f0e5",
+            borderRadius: 12,
+            padding: 12,
+            background: "#f8fffb",
+            color: "#0f3f32",
+            fontSize: 13,
+            fontWeight: 800,
+            lineHeight: 1.45,
+          }}
+        >
+          Secured payment by PhonePe. Your order total and offers are verified before payment.
         </div>
       </div>
 

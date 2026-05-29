@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import axios from "axios";
+import { API_BASE_URL } from "../../config/constants";
 import { buildImageUrl } from "../../utils/imageHelpers"; // ✅ adjust path if needed
 
 /* ---------------- CART HELPERS ---------------- */
@@ -29,6 +31,27 @@ function writeCart(slug, cartItems) {
 function money(n) {
   const v = Number(n || 0);
   return v.toFixed(2);
+}
+
+function formatDiscount(discount) {
+  if (!discount) return "";
+  const type = String(discount.discount_type || "").toUpperCase();
+  const value = Number(discount.discount_value || 0);
+  if (type === "PERCENT") return `${money(value).replace(/\.00$/, "")}% off`;
+  if (type === "FLAT") return `₹${money(value)} off`;
+  if (type === "FREE_GIFT") return "Free gift";
+  return "Offer";
+}
+
+function calcDiscountAmount(discount, subtotal) {
+  const base = Number(subtotal || 0);
+  const type = String(discount?.discount_type || "").toUpperCase();
+  const value = Number(discount?.discount_value || 0);
+
+  if (!(base > 0) || !(value > 0)) return 0;
+  if (type === "PERCENT") return Math.min(base, (base * value) / 100);
+  if (type === "FLAT") return Math.min(base, value);
+  return 0;
 }
 
 /* ---------------- UI HELPERS ---------------- */
@@ -76,6 +99,11 @@ export default function MyCart() {
 
   const [cart, setCart] = useState([]);
   const [toast, setToast] = useState("");
+  const [autoCoupon, setAutoCoupon] = useState(null);
+  const [autoDiscount, setAutoDiscount] = useState(0);
+  const [genericOffers, setGenericOffers] = useState([]);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponsOpen, setCouponsOpen] = useState(false);
 
   useEffect(() => {
     setCart(readCart(slug));
@@ -98,6 +126,115 @@ export default function MyCart() {
   const totalItems = useMemo(() => {
     return cart.reduce((sum, line) => sum + Number(line?.quantity || 1), 0);
   }, [cart]);
+
+  const nextAutoOffer = useMemo(() => {
+    if (autoCoupon || !genericOffers.length) return null;
+    const sorted = genericOffers
+      .map((offer) => ({ ...offer, min_subtotal_num: Number(offer?.min_subtotal || 0) }))
+      .filter((offer) => offer.min_subtotal_num > Number(subtotal || 0))
+      .sort((a, b) => a.min_subtotal_num - b.min_subtotal_num);
+    return sorted[0] || null;
+  }, [autoCoupon, genericOffers, subtotal]);
+
+  const couponRows = useMemo(() => {
+    const byId = new Map();
+    const source = [
+      ...(Array.isArray(genericOffers) ? genericOffers : []),
+      ...(autoCoupon ? [autoCoupon] : []),
+    ];
+
+    source.forEach((offer) => {
+      if (!offer) return;
+      const key = String(offer.id || offer.code || offer.name || Math.random());
+      if (!byId.has(key)) byId.set(key, offer);
+    });
+
+    return Array.from(byId.values())
+      .map((offer) => {
+        const minSubtotal = Number(offer?.min_subtotal || 0);
+        const eligible = Number(subtotal || 0) >= minSubtotal;
+        const saving = eligible ? calcDiscountAmount(offer, subtotal) : 0;
+        const checkoutAmount = Math.max(0, Number(subtotal || 0) - saving);
+        return {
+          offer,
+          eligible,
+          saving,
+          checkoutAmount,
+          minSubtotal,
+          needMore: Math.max(0, minSubtotal - Number(subtotal || 0)),
+          selected:
+            autoCoupon &&
+            String(offer.id || offer.code || offer.name) ===
+              String(autoCoupon.id || autoCoupon.code || autoCoupon.name),
+        };
+      })
+      .sort((a, b) => {
+        if (a.selected !== b.selected) return a.selected ? -1 : 1;
+        if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
+        return b.minSubtotal - a.minSubtotal;
+      });
+  }, [autoCoupon, genericOffers, subtotal]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAutoCouponPreview() {
+      if (!slug || !cart.length) {
+        setAutoCoupon(null);
+        setAutoDiscount(0);
+        setGenericOffers([]);
+        return;
+      }
+
+      setCouponLoading(true);
+      try {
+        const items = cart
+          .map((line) => ({
+            item_uid: line?.item_uid,
+            quantity: Math.max(1, Number(line?.quantity || 1)),
+          }))
+          .filter((line) => line.item_uid);
+
+        if (!items.length) {
+          if (!cancelled) {
+            setAutoCoupon(null);
+            setAutoDiscount(0);
+            setGenericOffers([]);
+          }
+          return;
+        }
+
+        const [evaluateRes, genericRes] = await Promise.all([
+          axios.post(`${API_BASE_URL}/store/${encodeURIComponent(slug)}/discounts/evaluate`, {
+            items,
+            coupon_code: null,
+            auto: true,
+          }),
+          axios.get(`${API_BASE_URL}/store/${encodeURIComponent(slug)}/discounts/generic`),
+        ]);
+
+        if (cancelled) return;
+
+        setAutoCoupon(evaluateRes.data?.applied || null);
+        setAutoDiscount(Number(evaluateRes.data?.totals?.discount_total || 0));
+        setGenericOffers(Array.isArray(genericRes.data?.offers) ? genericRes.data.offers : []);
+      } catch {
+        if (!cancelled) {
+          setAutoCoupon(null);
+          setAutoDiscount(0);
+          setGenericOffers([]);
+        }
+      } finally {
+        if (!cancelled) setCouponLoading(false);
+      }
+    }
+
+    loadAutoCouponPreview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, cart, subtotal]);
 
   const sync = (next) => {
     setCart(next);
@@ -347,6 +484,103 @@ export default function MyCart() {
     },
     summaryTitle: { margin: 0, fontSize: 15, fontWeight: 1000, letterSpacing: "-0.01em" },
     row: { display: "flex", justifyContent: "space-between", marginTop: 10, fontSize: 13 },
+    autoCouponCard: {
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 16,
+      border: "1px solid #d9f0e5",
+      background: "#f3fbf7",
+      display: "grid",
+      gap: 6,
+    },
+    autoCouponTop: {
+      display: "flex",
+      justifyContent: "space-between",
+      gap: 10,
+      alignItems: "baseline",
+      flexWrap: "wrap",
+    },
+    autoCouponTitle: { fontSize: 13, fontWeight: 1000, color: "#0f3f32" },
+    autoCouponSave: { fontSize: 14, fontWeight: 1000, color: "#0f766e" },
+    autoCouponNote: { margin: 0, fontSize: 12, color: "#4b6359", lineHeight: 1.4 },
+    couponLink: {
+      border: "none",
+      background: "transparent",
+      color: "#0f766e",
+      cursor: "pointer",
+      fontWeight: 1000,
+      fontSize: 13,
+      padding: 0,
+      textDecoration: "underline",
+      fontFamily: FONT_STACK,
+    },
+    overlay: {
+      position: "fixed",
+      inset: 0,
+      zIndex: 10000,
+      background: "rgba(17,24,39,0.46)",
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "center",
+      padding: 14,
+    },
+    couponPanel: {
+      width: "min(560px, 100%)",
+      maxHeight: "82vh",
+      overflow: "auto",
+      background: "#fff",
+      borderRadius: 18,
+      border: "1px solid #e5e7eb",
+      boxShadow: "0 24px 70px rgba(0,0,0,0.28)",
+      padding: 14,
+    },
+    couponPanelHeader: {
+      display: "flex",
+      justifyContent: "space-between",
+      gap: 12,
+      alignItems: "flex-start",
+      marginBottom: 12,
+    },
+    couponPanelTitle: { margin: 0, fontSize: 18, fontWeight: 1000 },
+    couponClose: {
+      border: "1px solid #e5e7eb",
+      background: "#fff",
+      borderRadius: 999,
+      width: 34,
+      height: 34,
+      cursor: "pointer",
+      fontWeight: 1000,
+      fontFamily: FONT_STACK,
+    },
+    couponList: { display: "grid", gap: 10 },
+    couponOption: (eligible, selected) => ({
+      border: selected ? "1px solid #0f766e" : "1px solid #e5e7eb",
+      background: selected ? "#f3fbf7" : "#fff",
+      borderRadius: 14,
+      padding: 12,
+      display: "grid",
+      gap: 8,
+      opacity: eligible ? 1 : 0.72,
+    }),
+    couponTag: (eligible) => ({
+      display: "inline-flex",
+      alignItems: "center",
+      width: "fit-content",
+      borderRadius: 999,
+      padding: "4px 8px",
+      fontSize: 11,
+      fontWeight: 1000,
+      background: eligible ? "#e7f7ef" : "#fff4e5",
+      color: eligible ? "#0f766e" : "#9a4b00",
+    }),
+    couponOptionTop: {
+      display: "flex",
+      justifyContent: "space-between",
+      gap: 10,
+      alignItems: "flex-start",
+    },
+    couponOptionName: { fontSize: 14, fontWeight: 1000, color: "#111827" },
+    couponOptionSaving: { fontSize: 14, fontWeight: 1000, color: "#0f766e", whiteSpace: "nowrap" },
     divider: { height: 1, background: "#eee", margin: "12px 0" },
     totalRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline" },
     totalLabel: { color: "#111", fontWeight: 950, fontSize: 13 },
@@ -370,6 +604,75 @@ export default function MyCart() {
   return (
     <div style={styles.page}>
       {toast && <div style={styles.toast}>{toast}</div>}
+      {couponsOpen && (
+        <div style={styles.overlay} onClick={() => setCouponsOpen(false)}>
+          <div style={styles.couponPanel} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.couponPanelHeader}>
+              <div>
+                <h2 style={styles.couponPanelTitle}>Auto coupons</h2>
+                <p style={{ ...styles.autoCouponNote, marginTop: 4 }}>
+                  These are preview estimates. The eligible auto coupon will be applied and confirmed at checkout page.
+                </p>
+              </div>
+              <button style={styles.couponClose} onClick={() => setCouponsOpen(false)} type="button">
+                X
+              </button>
+            </div>
+
+            <div style={styles.couponList}>
+              {couponLoading ? (
+                <div style={styles.couponOption(true, false)}>
+                  <p style={styles.autoCouponNote}>Checking available auto coupons...</p>
+                </div>
+              ) : couponRows.length ? (
+                couponRows.map((row) => (
+                  <div
+                    key={String(row.offer.id || row.offer.code || row.offer.name)}
+                    style={styles.couponOption(row.eligible, row.selected)}
+                  >
+                    <div style={styles.couponOptionTop}>
+                      <div>
+                        <div style={styles.couponOptionName}>{row.offer.name || "Auto offer"}</div>
+                        <p style={{ ...styles.autoCouponNote, marginTop: 3 }}>
+                          {formatDiscount(row.offer)}
+                          {row.offer.code ? ` · Code ${String(row.offer.code).toUpperCase()}` : ""}
+                          {row.minSubtotal > 0 ? ` · Min cart ₹${money(row.minSubtotal)}` : ""}
+                        </p>
+                      </div>
+                      {row.eligible ? (
+                        <div style={styles.couponOptionSaving}>Save ₹{money(row.saving)}</div>
+                      ) : null}
+                    </div>
+
+                    <span style={styles.couponTag(row.eligible)}>
+                      {row.eligible
+                        ? row.selected
+                          ? "Will apply at checkout"
+                          : "Eligible at checkout"
+                        : `Add ₹${money(row.needMore)} more`}
+                    </span>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontSize: 13 }}>
+                      <span style={{ color: "#6b7280", fontWeight: 800 }}>Estimated checkout amount</span>
+                      <strong>₹{money(row.checkoutAmount)}</strong>
+                    </div>
+
+                    <p style={styles.autoCouponNote}>
+                      This coupon will be applied automatically at checkout page if your cart is still eligible.
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <div style={styles.couponOption(true, false)}>
+                  <p style={styles.autoCouponNote}>
+                    No auto coupons are available right now. Checkout will still check again before payment.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={styles.headerRow}>
         <div>
@@ -510,6 +813,32 @@ export default function MyCart() {
               <div style={styles.row}>
                 <span style={{ color: "#6b7280" }}>Subtotal</span>
                 <strong>₹{money(subtotal)}</strong>
+              </div>
+
+              <div style={styles.autoCouponCard}>
+                <div style={styles.autoCouponTop}>
+                  <span style={styles.autoCouponTitle}>Coupons</span>
+                  <button style={styles.couponLink} onClick={() => setCouponsOpen(true)} type="button">
+                    View coupons
+                  </button>
+                </div>
+                {couponLoading ? (
+                  <p style={styles.autoCouponNote}>Checking auto coupons for checkout...</p>
+                ) : autoCoupon ? (
+                  <p style={styles.autoCouponNote}>
+                    {autoCoupon.name || "Best offer"} can save ₹{money(autoDiscount)}. It will be applied and
+                    confirmed at checkout page.
+                  </p>
+                ) : nextAutoOffer ? (
+                  <p style={styles.autoCouponNote}>
+                    Add ₹{money(Number(nextAutoOffer.min_subtotal || 0) - Number(subtotal || 0))} more
+                    to unlock {nextAutoOffer.name || "an auto coupon"}. Auto coupons apply at checkout page.
+                  </p>
+                ) : (
+                  <p style={styles.autoCouponNote}>
+                    Auto coupons will be checked and applied automatically during checkout if your cart is eligible.
+                  </p>
+                )}
               </div>
 
               <div style={styles.divider} />

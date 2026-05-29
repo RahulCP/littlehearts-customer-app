@@ -38,7 +38,11 @@ export default function useCheckoutCart({ slug, location }) {
       .map((x) => {
         if (x.item_uid !== item_uid) return x;
         const q = toInt(x.quantity || 1, 1);
-        return { ...x, quantity: Math.max(1, q + delta) };
+        const stock = Number(x.stocked_quantity ?? x.available_qty ?? 0);
+        const hasStock = Number.isFinite(stock) && stock > 0;
+        const requested = Math.max(1, q + delta);
+        const quantity = hasStock ? Math.min(requested, stock) : requested;
+        return { ...x, quantity };
       })
       .filter(Boolean);
 

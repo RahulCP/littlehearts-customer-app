@@ -5,36 +5,12 @@ import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 import { useMediaQuery } from "@mui/material";
 
-import { API_BASE_URL, IMAGE_BASE_URL } from "../../config/constants";
 import { FONT_FAMILY } from "../../config/themeConstants";
+import { buildImageUrl } from "../../utils/imageHelpers";
 
 function money0(v) {
   const n = Number(v || 0);
   return Number.isFinite(n) ? n.toFixed(0) : "0";
-}
-
-function safeJoin(base, path) {
-  const b = String(base || "");
-  const p = String(path || "");
-  if (!b) return p;
-  if (!p) return b;
-  const bb = b.endsWith("/") ? b.slice(0, -1) : b;
-  const pp = p.startsWith("/") ? p.slice(1) : p;
-  return `${bb}/${pp}`;
-}
-
-function getImageBase() {
-  if (IMAGE_BASE_URL && String(IMAGE_BASE_URL).trim()) return IMAGE_BASE_URL;
-  const api = String(API_BASE_URL || "").trim();
-  if (!api) return "";
-  return api.replace(/\/api\/?$/i, "");
-}
-
-function buildImageSrc(image) {
-  const img = String(image || "").trim();
-  if (!img) return "";
-  if (/^https?:\/\//i.test(img)) return img;
-  return safeJoin(getImageBase(), img);
 }
 
 const SalesCard = ({
@@ -74,13 +50,18 @@ const SalesCard = ({
     return Number.isFinite(s) && s > 0 && Number.isFinite(sell) && s > sell;
   }, [strikePrice, sellingPrice]);
 
-  const stockText = useMemo(() => {
+  const stockMeta = useMemo(() => {
     const left = Number(itemLeft || 0);
-    if (!inStock || left <= 0) return "Sold out";
-    return `${left} in stock`;
+    if (!inStock || left <= 0) {
+      return { text: "Sold out", bg: "rgba(180,35,24,0.92)", color: "#fff" };
+    }
+    if (left <= 3) {
+      return { text: `Only ${left} left`, bg: "rgba(181,71,8,0.94)", color: "#fff" };
+    }
+    return { text: `${left} available`, bg: "rgba(255,255,255,0.92)", color: "#111" };
   }, [itemLeft, inStock]);
 
-  const src = useMemo(() => buildImageSrc(image), [image]);
+  const src = useMemo(() => buildImageUrl(image), [image]);
 
   return (
     <Box sx={{ maxWidth: 350 }}>
@@ -92,6 +73,7 @@ const SalesCard = ({
               sx={{
                 height: { xs: 250, sm: 450 },
                 width: "100%",
+                objectFit: "cover",
                 transition: "transform 0.3s ease-in-out",
                 cursor: "pointer",
                 "&:hover": { transform: "scale(1.05)" },
@@ -126,13 +108,11 @@ const SalesCard = ({
               position: "absolute",
               bottom: 8,
               left: 8,
-              backgroundColor: "black",
-              color: "white",
-              borderRadius: "12px",
-              padding: "6px 10px",
               display: "flex",
               alignItems: "center",
+              flexWrap: "wrap",
               gap: 1,
+              maxWidth: "calc(100% - 16px)",
             }}
           >
             {showOffer && (
@@ -140,6 +120,10 @@ const SalesCard = ({
                 variant="caption"
                 sx={{
                   color: "white",
+                  bgcolor: "rgba(0,0,0,0.78)",
+                  borderRadius: 999,
+                  px: 1,
+                  py: 0.45,
                   fontFamily: FONT_FAMILY,
                   fontSize: { xs: "12px", md: "13px" },
                   fontWeight: 600,
@@ -152,13 +136,17 @@ const SalesCard = ({
             <Typography
               variant="caption"
               sx={{
-                color: "white",
+                color: stockMeta.color,
+                bgcolor: stockMeta.bg,
+                borderRadius: 999,
+                px: 1,
+                py: 0.45,
                 fontFamily: FONT_FAMILY,
                 fontSize: { xs: "12px", md: "13px" },
-                fontWeight: 500,
+                fontWeight: 700,
               }}
             >
-              {stockText}
+              {stockMeta.text}
             </Typography>
           </Box>
         </Box>

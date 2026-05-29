@@ -49,6 +49,10 @@ function writeCart(slug, cartItems) {
 }
 function addToCart(slug, cartLine) {
   const cart = readCart(slug);
+  const maxQty = Number(cartLine?.stocked_quantity ?? cartLine?.available_qty ?? 0);
+  const hasMaxQty = Number.isFinite(maxQty) && maxQty > 0;
+  const incomingQty = Number(cartLine.quantity) || 1;
+  let capped = false;
 
   const idx = cart.findIndex(
     (x) =>
@@ -57,24 +61,30 @@ function addToCart(slug, cartLine) {
   );
 
   if (idx >= 0) {
-    const nextQty =
-      (Number(cart[idx].quantity) || 1) + (Number(cartLine.quantity) || 1);
+    const requestedQty = (Number(cart[idx].quantity) || 1) + incomingQty;
+    const nextQty = hasMaxQty ? Math.min(requestedQty, maxQty) : requestedQty;
+    capped = hasMaxQty && requestedQty > maxQty;
+
     cart[idx] = {
       ...cart[idx],
+      ...cartLine,
       quantity: nextQty,
       updated_at: new Date().toISOString(),
     };
   } else {
+    const nextQty = hasMaxQty ? Math.min(incomingQty, maxQty) : incomingQty;
+    capped = hasMaxQty && incomingQty > maxQty;
+
     cart.push({
       ...cartLine,
-      quantity: Number(cartLine.quantity) || 1,
+      quantity: nextQty,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
   }
 
   writeCart(slug, cart);
-  return cart;
+  return { cart, capped };
 }
 
 /* ---------------- helpers ---------------- */
@@ -279,6 +289,8 @@ const ProductDetails = () => {
     return out;
   }, [product?.images, preferredItem?.image]);
 
+  const selectedImage = imagesToShow[0] || preferredItem?.image || null;
+
   const offerText = useMemo(() => {
     const pct = Number(product?.offer?.sale_percent || 0);
     if (!Number.isFinite(pct) || pct <= 0) return "";
@@ -288,9 +300,31 @@ const ProductDetails = () => {
     return `${name} · ${money0(pct)}%`;
   }, [product?.offer]);
 
-  const stockText = useMemo(() => {
-    if (!canAdd || leftQty <= 0) return "Sold out";
-    return `${leftQty} in stock`;
+  const stockMeta = useMemo(() => {
+    if (!canAdd || leftQty <= 0) {
+      return {
+        label: "Sold out",
+        bg: "#FDECEC",
+        color: "#B42318",
+        border: "rgba(180,35,24,0.22)",
+      };
+    }
+
+    if (leftQty <= 3) {
+      return {
+        label: `Only ${leftQty} left`,
+        bg: "#FFF4E5",
+        color: "#B54708",
+        border: "rgba(181,71,8,0.24)",
+      };
+    }
+
+    return {
+      label: `In stock · ${leftQty} available`,
+      bg: "#EAF7EF",
+      color: "#177245",
+      border: "rgba(23,114,69,0.2)",
+    };
   }, [canAdd, leftQty]);
 
   const showStrike =
@@ -378,16 +412,16 @@ const ProductDetails = () => {
         strike_price:
           preferredItem.strike_price != null ? Number(preferredItem.strike_price) : null,
 
-        image:
-          preferredItem?.image ||
-          (Array.isArray(product?.images) && product.images[0]) ||
-          null,
+        image: selectedImage,
+        stocked_quantity: leftQty,
+        available_qty: leftQty,
+        in_stock: canAdd,
 
         quantity: 1,
       };
 
-      addToCart(effectiveSlug, cartLine);
-      setToast("Added to cart ✅");
+      const result = addToCart(effectiveSlug, cartLine);
+      setToast(result?.capped ? `Only ${leftQty} available.` : "Added to cart.");
     } catch (e) {
       console.error(e);
       setToast("Failed to add to cart.");
@@ -431,10 +465,10 @@ const ProductDetails = () => {
         strike_price:
           preferredItem.strike_price != null ? Number(preferredItem.strike_price) : null,
 
-        image:
-          preferredItem?.image ||
-          (Array.isArray(product?.images) && product.images[0]) ||
-          null,
+        image: selectedImage,
+        stocked_quantity: leftQty,
+        available_qty: leftQty,
+        in_stock: canAdd,
 
         quantity: 1,
       };
@@ -687,11 +721,13 @@ const ProductDetails = () => {
           {/* ✅ In-stock ABOVE buttons (tight) */}
           <Stack direction="row" spacing={1} sx={{ mt: 1.0 }} alignItems="center">
             <Chip
-              label={stockText}
+              label={stockMeta.label}
               size="small"
               sx={{
                 fontWeight: 950,
-                bgcolor: "#f5f5f5",
+                bgcolor: stockMeta.bg,
+                color: stockMeta.color,
+                border: `1px solid ${stockMeta.border}`,
                 borderRadius: 999,
                 height: 24,
                 "& .MuiChip-label": { px: 1.1, fontSize: 12.2 },

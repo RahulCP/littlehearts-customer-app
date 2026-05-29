@@ -1,41 +1,51 @@
 // src/pages/store/checkout/components/steps/AddressStep.jsx
 import React from "react";
 
-export default function AddressStep({ S, address, setAddress, canGoStep3, onBack, onNext }) {
+export default function AddressStep({
+  S,
+  buyer,
+  address,
+  setAddress,
+  canGoStep3,
+  onBack,
+  onNext,
+}) {
   return (
     <>
-      <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Shipping address</h2>
-      <p style={{ ...S.muted, marginTop: 6 }}>Enter where you want the order delivered.</p>
+      <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Mailing details</h2>
+      <p style={{ ...S.muted, marginTop: 6 }}>
+        Recipient details are filled from contact details. You can change them.
+      </p>
 
       <div style={{ marginTop: 12, ...S.row }}>
         <div style={S.field}>
-          <div style={S.label}>Receiver Name *</div>
+          <div style={S.label}>Recipient Name *</div>
           <input
             style={S.input}
             value={address.receiver_name}
             onChange={(e) => setAddress((p) => ({ ...p, receiver_name: e.target.value }))}
-            placeholder="Receiver name"
+            placeholder="Recipient name"
           />
         </div>
         <div style={S.field}>
-          <div style={S.label}>Receiver Phone *</div>
+          <div style={S.label}>Recipient Phone *</div>
           <input
             style={S.input}
             value={address.receiver_phone}
             onChange={(e) => setAddress((p) => ({ ...p, receiver_phone: e.target.value }))}
-            placeholder="Receiver phone"
+            placeholder="Recipient phone"
           />
         </div>
       </div>
 
       <div style={{ marginTop: 12 }}>
         <div style={S.field}>
-          <div style={S.label}>Receiver Email (optional)</div>
+          <div style={S.label}>Recipient Email (optional)</div>
           <input
             style={S.input}
             value={address.receiver_email}
             onChange={(e) => setAddress((p) => ({ ...p, receiver_email: e.target.value }))}
-            placeholder="Receiver email"
+            placeholder="Recipient email"
           />
         </div>
       </div>

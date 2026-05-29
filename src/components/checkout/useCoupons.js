@@ -77,7 +77,7 @@ export default function useCoupons({
     }
   }
 
-  async function evaluateAutoOffer({ silent = true } = {}) {
+  async function evaluateAutoOffer({ silent = true, force = false } = {}) {
     if (!slug) return null;
     if (!cart?.length) return null;
 
@@ -87,7 +87,18 @@ export default function useCoupons({
       .join("|");
 
     const key = `${slug}::${itemsKey}::${customerToken ? "auth" : "guest"}`;
-    if (lastAutoKeyRef.current === key) return null;
+    if (!force && lastAutoKeyRef.current === key) {
+      return autoApplied
+        ? {
+            totals: {
+              subtotal,
+              discount_total: autoDiscount,
+              grand_total: Math.max(0, Number(subtotal || 0) - Number(autoDiscount || 0)),
+            },
+            applied: autoApplied,
+          }
+        : null;
+    }
 
     if (autoEvalInFlightRef.current) return null;
     autoEvalInFlightRef.current = true;
@@ -157,15 +168,15 @@ export default function useCoupons({
 
   // ✅ Validate manual coupon at pay-time (eligibility), keep stacking math
   async function evaluateAtPayment({ manualCode } = {}) {
-    // refresh auto once
-    await evaluateAutoOffer({ silent: true });
+    // refresh auto once and return the exact result so order creation does not use stale state
+    const autoData = await evaluateAutoOffer({ silent: true, force: true });
 
     if (!manualCode) {
       setManualApplied(null);
-      return { ok: true };
+      return { ok: true, autoData, manualData: null };
     }
 
-    if (!slug || !cart?.length) return { ok: true };
+    if (!slug || !cart?.length) return { ok: true, autoData, manualData: null };
 
     setCouponLoading(true);
     try {
@@ -193,7 +204,7 @@ export default function useCoupons({
       }
 
       setManualApplied(data.applied);
-      return data;
+      return { ok: true, autoData, manualData: data };
     } finally {
       setCouponLoading(false);
     }

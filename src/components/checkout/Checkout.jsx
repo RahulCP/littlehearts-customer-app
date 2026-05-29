@@ -1,5 +1,5 @@
 // src/pages/store/Checkout.jsx
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
@@ -65,6 +65,7 @@ export default function Checkout() {
 
   // ✅ NEW (mobile UX): if false, receiver fields are hidden and we’ll use buyer as receiver
   const [sendToDifferentPerson, setSendToDifferentPerson] = useState(false);
+  const previousBuyerRef = useRef({ name: "", phone: "", email: "" });
 
   // ✅ PhonePe ONLY
   const [paymentMethod, setPaymentMethod] = useState("PHONEPE");
@@ -81,6 +82,26 @@ export default function Checkout() {
     setBuyer,
     setAddress,
   });
+
+  useEffect(() => {
+    const prev = previousBuyerRef.current;
+    setAddress((current) => ({
+      ...current,
+      receiver_name:
+        !current.receiver_name || current.receiver_name === prev.name
+          ? buyer.name
+          : current.receiver_name,
+      receiver_phone:
+        !current.receiver_phone || current.receiver_phone === prev.phone
+          ? buyer.phone
+          : current.receiver_phone,
+      receiver_email:
+        !current.receiver_email || current.receiver_email === prev.email
+          ? buyer.email
+          : current.receiver_email,
+    }));
+    previousBuyerRef.current = { name: buyer.name, phone: buyer.phone, email: buyer.email };
+  }, [buyer.name, buyer.phone, buyer.email]);
 
   // coupons + totals
   const coupons = useCoupons({
@@ -106,23 +127,20 @@ export default function Checkout() {
     const stateOk = address.state.trim().length >= 2;
     const pinOk = address.pincode.trim().length >= 5;
 
-    const receiverName = sendToDifferentPerson ? address.receiver_name : buyer.name;
-    const receiverPhone = sendToDifferentPerson ? address.receiver_phone : buyer.phone;
+    const receiverName = address.receiver_name || buyer.name;
+    const receiverPhone = address.receiver_phone || buyer.phone;
 
     const receiverOk = (receiverName || "").trim().length >= 2;
     const receiverPhoneOk = (receiverPhone || "").trim().length >= 10;
 
     return line1Ok && cityOk && stateOk && pinOk && receiverOk && receiverPhoneOk;
-  }, [address, buyer, sendToDifferentPerson]);
+  }, [address, buyer]);
 
   /* ---------------- helpers ---------------- */
   function buildReceiver() {
-    const receiver_name =
-      (sendToDifferentPerson ? address.receiver_name : buyer.name) || buyer.name;
-    const receiver_phone =
-      (sendToDifferentPerson ? address.receiver_phone : buyer.phone) || buyer.phone;
-    const receiver_email =
-      (sendToDifferentPerson ? address.receiver_email : buyer.email) || buyer.email;
+    const receiver_name = address.receiver_name || buyer.name;
+    const receiver_phone = address.receiver_phone || buyer.phone;
+    const receiver_email = address.receiver_email || buyer.email;
 
     return { receiver_name, receiver_phone, receiver_email };
   }
@@ -144,13 +162,15 @@ export default function Checkout() {
     };
   }
 
-  function buildDiscountRows() {
+  function buildDiscountRows({ autoData } = {}) {
     const rows = [];
+    const autoApplied = autoData?.applied || coupons.autoApplied;
+    const autoDiscount = Number(autoData?.totals?.discount_total ?? coupons.autoDiscount ?? 0);
 
     // AUTO lane (no code)
-    if (coupons.autoApplied) {
-      const amt = Number(coupons.autoDiscount || 0);
-      const d = coupons.autoApplied;
+    if (autoApplied) {
+      const amt = autoDiscount;
+      const d = autoApplied;
 
       // even if FREE_GIFT => store row with amount 0 (so you can see it in DB)
       const shouldInsert = amt > 0 || String(d.discount_type || "").toUpperCase() === "FREE_GIFT";
@@ -159,7 +179,7 @@ export default function Checkout() {
           source: "RULE", // your service uses RULE/MANUAL
           discount_id: d.id || null,
           name: d.name || "Auto Offer",
-          code: null,
+          code: d.code || null,
           discount_type: d.discount_type || "FLAT",
           discount_value: Number(d.discount_value || 0),
           amount_applied: amt,
@@ -196,7 +216,7 @@ export default function Checkout() {
   }
 
   /* ------------ order create ------------ */
-  async function createOrder() {
+  async function createOrder({ couponEvaluation } = {}) {
     const items = cart.map((x) => ({
       item_uid: x.item_uid, // ✅ your sales.service resolves item_uid -> product_item_id
       quantity: toInt(x.quantity || 1, 1),
@@ -204,7 +224,7 @@ export default function Checkout() {
 
     const shipping_address = buildShippingAddress();
     const billing_address = { ...shipping_address }; // for now: same as shipping
-    const discounts = buildDiscountRows();
+    const discounts = buildDiscountRows({ autoData: couponEvaluation?.autoData });
 
     const payload = {
       buyer,
@@ -308,11 +328,11 @@ export default function Checkout() {
       setLoading(true);
 
       // ✅ optional: re-evaluate auto at payment (fresh)
-      await coupons.evaluateAtPayment?.({
+      const couponEvaluation = await coupons.evaluateAtPayment?.({
         manualCode: coupons.manualSelected?.code || null,
       });
 
-      const orderHydrated = await createOrder();
+      const orderHydrated = await createOrder({ couponEvaluation });
 
       // ✅ PhonePe ONLY
       await initiatePhonePePayment(orderHydrated);
@@ -403,6 +423,8 @@ export default function Checkout() {
           setBuyer={setBuyer}
           address={address}
           setAddress={setAddress}
+          sendToDifferentPerson={sendToDifferentPerson}
+          setSendToDifferentPerson={setSendToDifferentPerson}
           // keep props (but PhonePe only)
           paymentMethod={paymentMethod}
           setPaymentMethod={setPaymentMethod}
