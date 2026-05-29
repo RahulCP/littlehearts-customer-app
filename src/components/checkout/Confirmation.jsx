@@ -4,7 +4,7 @@ import axios from "axios";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { API_BASE_URL } from "../../config/constants";
 
-const MAX_POLL_MS = 60_000;
+const MAX_POLL_MS = 12_000;
 const POLL_INTERVAL_MS = 4_000;
 
 const styles = {
@@ -101,10 +101,15 @@ export default function Confirmation() {
     const qp = new URLSearchParams(location.search);
     return qp.get("transactionId") || "";
   }, [location.search]);
+  const initialOrderCode = useMemo(() => {
+    const qp = new URLSearchParams(location.search);
+    return qp.get("orderCode") || "";
+  }, [location.search]);
 
   const [toast, setToast] = useState("");
   const [phase, setPhase] = useState("LOADING"); // LOADING | SUCCESS | FAILED
   const [isFinalVerify, setIsFinalVerify] = useState(false);
+  const [orderCode, setOrderCode] = useState(initialOrderCode);
 
   const startedAtRef = useRef(Date.now());
   const timerRef = useRef(null);
@@ -121,22 +126,21 @@ export default function Confirmation() {
     )}/phonepe/db-status/${encodeURIComponent(transactionId)}`;
 
     const { data } = await axios.get(url);
+    if (data?.orderCode) setOrderCode(data.orderCode);
     // expected: { success:true, salesStatus:"PENDING|SUCCESS|FAILURE" }
     return normalizeNewStatus(data?.salesStatus);
   };
 
   const checkPhonePeFinalStatus = async () => {
-    const accessToken = localStorage.getItem("phonepe_auth_token");
-    const headers = {};
-    if (accessToken) headers.Authorization = `O-Bearer ${accessToken}`;
-
     const url = `${API_BASE_URL}/store/${encodeURIComponent(
       slug
     )}/phonepe/status?merchantOrderId=${encodeURIComponent(transactionId)}`;
 
-    const { data } = await axios.get(url, { headers });
+    const { data } = await axios.get(url);
+    if (data?.orderCode) setOrderCode(data.orderCode);
 
     const state =
+      data?.salesStatus ||
       data?.state ||
       data?.data?.state ||
       data?.data?.data?.state ||
@@ -247,7 +251,7 @@ export default function Confirmation() {
           {transactionId ? (
             <div style={{ textAlign: "center" }}>
               <span style={styles.pill}>
-                Transaction: <b>{transactionId}</b>
+                Order: <b>{orderCode || transactionId}</b>
               </span>
             </div>
           ) : null}
@@ -296,7 +300,7 @@ export default function Confirmation() {
               </p>
               <p style={styles.muted}>
                 If your amount was debited, it may take a few minutes to update. You can retry now
-                or contact support with the transaction id.
+                or contact support with the order number.
               </p>
 
               <div style={styles.row}>

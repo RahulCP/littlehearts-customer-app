@@ -244,37 +244,12 @@ export default function Checkout() {
     return res.data;
   }
 
-  /* ------------ PhonePe ONLY (aligned) ------------ */
-  async function getPhonePeToken() {
-    const savedToken = localStorage.getItem("phonepe_auth_token");
-    const savedExp = Number(localStorage.getItem("phonepe_auth_token_expires_at") || 0);
-    const now = Math.floor(Date.now() / 1000);
-
-    // 30s buffer
-    if (savedToken && savedExp && now < savedExp - 30) return savedToken;
-
-    const url = `${API_BASE_URL}/store/${encodeURIComponent(slug)}/phonepe/fetchAuthToken`;
-    const { data } = await axios.post(url);
-
-    const token = data?.access_token;
-    const exp = data?.expires_at;
-
-    if (!token) throw new Error("PhonePe auth token missing in response.");
-
-    localStorage.setItem("phonepe_auth_token", token);
-    if (exp) localStorage.setItem("phonepe_auth_token_expires_at", String(exp));
-
-    return token;
-  }
-
   async function initiatePhonePePayment(orderHydrated) {
     const order = orderHydrated?.order || {};
 
     // pick stable id for merchantOrderId
     const transactionId = order.order_uid || order.order_id || orderHydrated?.order_uid;
     if (!transactionId) throw new Error("Missing order id to send as merchantOrderId.");
-
-    const accessToken = await getPhonePeToken();
 
     // where PhonePe should redirect back after payment
     const redirectUrl =
@@ -289,7 +264,6 @@ export default function Checkout() {
       redirectUrl,
       email: buyer.email,
       name: buyer.name,
-      accessToken,
     };
 
     const url = `${API_BASE_URL}/store/${encodeURIComponent(slug)}/phonepe/initiate-payment`;
