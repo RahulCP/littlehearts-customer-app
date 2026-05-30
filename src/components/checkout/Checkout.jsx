@@ -58,7 +58,7 @@ export default function Checkout() {
     address_line2: "",
     city: "",
     district: "",
-    state: "",
+    state: "Kerala",
     pincode: "",
     country: "India",
   });

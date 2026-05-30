@@ -2,6 +2,7 @@
 import React from "react";
 import { money, toInt } from "./checkoutUtils";
 import { buildImageUrl } from "../../utils/imageHelpers";
+import { INDIAN_STATES, KERALA_DISTRICTS, isKerala } from "../../constants/addressOptions";
 
 function Section({ title, children }) {
   return (
@@ -17,6 +18,17 @@ function Field({ S, label, value, onChange, placeholder = "" }) {
     <div style={S.field}>
       <div style={S.label}>{label}</div>
       <input style={S.input} value={value} onChange={onChange} placeholder={placeholder} />
+    </div>
+  );
+}
+
+function SelectField({ S, label, value, onChange, children }) {
+  return (
+    <div style={S.field}>
+      <div style={S.label}>{label}</div>
+      <select style={{ ...S.input, background: "#fff" }} value={value} onChange={onChange}>
+        {children}
+      </select>
     </div>
   );
 }
@@ -274,21 +286,50 @@ export default function CheckoutMobile({
               value={address.city}
               onChange={(e) => setAddress((p) => ({ ...p, city: e.target.value }))}
             />
-            <Field
-              S={S}
-              label="District"
-              value={address.district}
-              onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))}
-            />
+            {isKerala(address.state) ? (
+              <SelectField
+                S={S}
+                label="District"
+                value={address.district}
+                onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))}
+              >
+                <option value="">Select district</option>
+                {KERALA_DISTRICTS.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </SelectField>
+            ) : (
+              <Field
+                S={S}
+                label="District"
+                value={address.district}
+                onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))}
+              />
+            )}
           </div>
 
           <div style={{ marginTop: 10, ...S.row }}>
-            <Field
+            <SelectField
               S={S}
               label="State *"
               value={address.state}
-              onChange={(e) => setAddress((p) => ({ ...p, state: e.target.value }))}
-            />
+              onChange={(e) =>
+                setAddress((p) => ({
+                  ...p,
+                  state: e.target.value,
+                  district: isKerala(e.target.value) ? p.district : "",
+                }))
+              }
+            >
+              <option value="">Select state</option>
+              {INDIAN_STATES.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </SelectField>
             <Field
               S={S}
               label="Pincode *"

@@ -1,5 +1,14 @@
 // src/pages/store/checkout/components/steps/AddressStep.jsx
 import React from "react";
+import { INDIAN_STATES, KERALA_DISTRICTS, isKerala } from "../../constants/addressOptions";
+
+function AddressSelect({ S, value, onChange, children }) {
+  return (
+    <select style={{ ...S.input, background: "#fff" }} value={value} onChange={onChange}>
+      {children}
+    </select>
+  );
+}
 
 export default function AddressStep({
   S,
@@ -81,14 +90,42 @@ export default function AddressStep({
         </div>
         <div style={S.field}>
           <div style={S.label}>District</div>
-          <input style={S.input} value={address.district} onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))} />
+          {isKerala(address.state) ? (
+            <AddressSelect S={S} value={address.district} onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))}>
+              <option value="">Select district</option>
+              {KERALA_DISTRICTS.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </AddressSelect>
+          ) : (
+            <input style={S.input} value={address.district} onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))} />
+          )}
         </div>
       </div>
 
       <div style={{ marginTop: 12, ...S.row }}>
         <div style={S.field}>
           <div style={S.label}>State *</div>
-          <input style={S.input} value={address.state} onChange={(e) => setAddress((p) => ({ ...p, state: e.target.value }))} />
+          <AddressSelect
+            S={S}
+            value={address.state}
+            onChange={(e) =>
+              setAddress((p) => ({
+                ...p,
+                state: e.target.value,
+                district: isKerala(e.target.value) ? p.district : "",
+              }))
+            }
+          >
+            <option value="">Select state</option>
+            {INDIAN_STATES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </AddressSelect>
         </div>
         <div style={S.field}>
           <div style={S.label}>Pincode *</div>
