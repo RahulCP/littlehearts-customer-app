@@ -20,6 +20,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import { API_BASE_URL } from "../../config/constants";
 import { ensureStoreCustomerSession } from "../../auth/customerSession";
+import { buildImageUrl } from "../../utils/imageHelpers";
 
 function money(value) {
   const n = Number(value || 0);
@@ -73,6 +74,17 @@ function itemSummary(order) {
   if (!names.length) return `${items.length} item${items.length === 1 ? "" : "s"}`;
   const visible = names.slice(0, 2).join(", ");
   return names.length > 2 ? `${visible} +${names.length - 2} more` : visible;
+}
+
+function itemImage(item) {
+  return (
+    item?.display_image_url ||
+    item?.image_url ||
+    item?.image ||
+    item?.cover_image_url ||
+    item?.storage_key ||
+    ""
+  );
 }
 
 function deliveryAddress(order) {
@@ -336,15 +348,57 @@ export default function CustomerOrders() {
                         <Stack
                           key={item.id || `${item.product_label}-${item.quantity}`}
                           direction="row"
-                          spacing={1}
+                          spacing={1.1}
                           alignItems="center"
-                          sx={{ py: 0.55 }}
+                          sx={{
+                            py: 0.65,
+                            borderTop: "1px solid #f1f5f9",
+                            "&:first-of-type": { borderTop: 0 },
+                          }}
                         >
-                          <Typography sx={{ flex: 1, minWidth: 0, fontSize: 13.5, color: "#475569" }} noWrap>
-                            {item.product_label || item.product_name || "Item"}
-                          </Typography>
-                          <Typography sx={{ fontSize: 13, color: "#64748b", fontWeight: 800 }}>
-                            x{Number(item.quantity || 0)}
+                          <Box
+                            sx={{
+                              width: 54,
+                              height: 54,
+                              borderRadius: 1.5,
+                              bgcolor: "#f1f5f9",
+                              border: "1px solid #e2e8f0",
+                              overflow: "hidden",
+                              flex: "0 0 auto",
+                              display: "grid",
+                              placeItems: "center",
+                            }}
+                          >
+                            {itemImage(item) ? (
+                              <Box
+                                component="img"
+                                src={buildImageUrl(itemImage(item))}
+                                alt={item.product_label || item.product_name || "Order item"}
+                                loading="lazy"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = "none";
+                                }}
+                                sx={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                  display: "block",
+                                }}
+                              />
+                            ) : (
+                              <ShoppingBagIcon sx={{ color: "#94a3b8", fontSize: 24 }} />
+                            )}
+                          </Box>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 13.5, color: "#334155", fontWeight: 850 }} noWrap>
+                              {item.product_label || item.product_name || "Item"}
+                            </Typography>
+                            <Typography sx={{ fontSize: 12.5, color: "#64748b", mt: 0.15 }}>
+                              Qty {Number(item.quantity || 0)}
+                            </Typography>
+                          </Box>
+                          <Typography sx={{ fontSize: 13, color: "#111827", fontWeight: 900 }}>
+                            {money(item.line_total || Number(item.quantity || 0) * Number(item.unit_price || 0))}
                           </Typography>
                         </Stack>
                       ))}
