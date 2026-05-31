@@ -1,6 +1,27 @@
 import React from "react";
 import { money, toInt } from "./checkoutUtils";
 import { buildImageUrl } from "../../utils/imageHelpers";
+import { getStyleMeta } from "../../config/styleOptions";
+
+function colorDotStyle(hex) {
+  return {
+    width: 12,
+    height: 12,
+    borderRadius: "50%",
+    background: hex || "#fff",
+    border: "1px solid rgba(0,0,0,0.25)",
+    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.45)",
+    display: "inline-block",
+    flex: "0 0 auto",
+  };
+}
+
+function colorLabel(line) {
+  const meta = getStyleMeta(line?.style_id);
+  const label = meta?.label || line?.style_label || "";
+  const hex = meta?.hex || line?.style_hex || "";
+  return label ? { label, hex } : null;
+}
 
 function formatDiscount(discount) {
   if (!discount) return "";
@@ -69,6 +90,7 @@ export default function OrderSummary({
       <div style={{ marginTop: 10, display: "grid", gap: 10, maxHeight: 320, overflow: "auto" }}>
         {cart.map((x) => {
           const imgSrc = buildImageUrl(pickCartImage(x));
+          const color = colorLabel(x);
 
           return (
             <div
@@ -110,6 +132,12 @@ export default function OrderSummary({
 
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontWeight: 900, fontSize: 13, marginBottom: 4 }}>{x.product_label || "Product"}</div>
+                {color ? (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", fontWeight: 800 }}>
+                    {color.hex ? <span style={colorDotStyle(color.hex)} /> : null}
+                    {color.label}
+                  </div>
+                ) : null}
 
                 <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
                   <button onClick={() => updateQty(x.item_uid, -1)} style={S.miniBtn} type="button">

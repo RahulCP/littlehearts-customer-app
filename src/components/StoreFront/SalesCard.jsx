@@ -8,7 +8,12 @@ import { useMediaQuery } from "@mui/material";
 import { FONT_FAMILY } from "../../config/themeConstants";
 import { buildImageUrl } from "../../utils/imageHelpers";
 
-function money0(v) {
+function money2(v) {
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+}
+
+function percent0(v) {
   const n = Number(v || 0);
   return Number.isFinite(n) ? n.toFixed(0) : "0";
 }
@@ -41,7 +46,7 @@ const SalesCard = ({
   const offerLine = useMemo(() => {
     if (!showOffer) return "";
     const nm = String(offerName || "Offer").trim();
-    return `${nm} · ${money0(offerPercent)}%`;
+    return `${nm} · ${percent0(offerPercent)}%`;
   }, [offerName, offerPercent, showOffer]);
 
   const showStrike = useMemo(() => {
@@ -184,7 +189,7 @@ const SalesCard = ({
                 marginRight: "6px",
               }}
             >
-              ₹{money0(strikePrice)}
+              ₹{money2(strikePrice)}
             </Typography>
           )}
 
@@ -197,7 +202,7 @@ const SalesCard = ({
               fontSize: { xs: "17px", md: "17px" },
             }}
           >
-            ₹{money0(sellingPrice)}
+            ₹{money2(sellingPrice)}
           </Typography>
         </Box>
       </Card>

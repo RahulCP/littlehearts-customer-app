@@ -49,19 +49,30 @@ const MenuBar = ({ allItems }) => {
 
   const navigate = useNavigate();
   const location = useLocation();
-  const isSmallScreen = useMediaQuery("(max-width:600px)");
+  const isSmallScreen = useMediaQuery("(max-width:899px)");
   const drawerRef = useRef(null);
 
   // ----------------------------
-  // ✅ Derive store slug from NEW URL pattern: /store/:slug/...
+  // ✅ Derive store slug from /store/:slug/... and public /:slug entry
   // ----------------------------
   const pathArray = location.pathname.split("/").filter(Boolean);
 
   // examples:
   // "/store/illolam/products" -> ["store","illolam","products"]
+  // "/illolam"                -> ["illolam"]
   // "/ammulogin"              -> ["ammulogin"]
   // "/"                       -> []
-  const storeSlug = pathArray[0] === "store" ? (pathArray[1] || null) : null;
+  const storeSlug =
+    pathArray[0] === "store"
+      ? pathArray[1] || null
+      : pathArray.length === 1 && pathArray[0] !== "ammulogin"
+      ? pathArray[0]
+      : null;
+
+  const isStoreWelcomePage =
+    !!storeSlug &&
+    ((pathArray[0] === "store" && pathArray.length === 2) ||
+      (pathArray[0] !== "store" && pathArray.length === 1));
 
   // ----------------------------
   // Detect customer login (store-scoped)
@@ -149,6 +160,9 @@ const MenuBar = ({ allItems }) => {
   const menuItems = [];
 
   if (storeSlug) {
+    if (!isStoreWelcomePage) {
+      menuItems.push({ text: "Home", href: `/store/${storeSlug}` });
+    }
     menuItems.push({ text: "All Items", href: `/store/${storeSlug}/products` });
 
     categories.forEach((cat) => {
@@ -163,7 +177,9 @@ const MenuBar = ({ allItems }) => {
       menuItems.push({ text: "My Orders", href: `/store/${storeSlug}/my-orders` });
     }
 
-    menuItems.push({ text: "My Cart", href: `/store/${storeSlug}/my-cart` });
+    if (!isStoreWelcomePage) {
+      menuItems.push({ text: "My Cart", href: `/store/${storeSlug}/my-cart` });
+    }
   } else {
     menuItems.push({ text: "All Stores", href: "/" });
   }
@@ -199,12 +215,12 @@ const MenuBar = ({ allItems }) => {
   const closeSearchModal = () => setIsSearchModalOpen(false);
 
   const handleLogoClick = () => {
-    if (storeSlug) navigate(`/store/${storeSlug}/products`);
+    if (storeSlug) navigate(`/store/${storeSlug}`);
     else navigate("/");
   };
 
   const handleHomeClick = () => {
-    if (storeSlug) navigate(`/store/${storeSlug}/products`);
+    if (storeSlug) navigate(`/store/${storeSlug}`);
     else navigate("/");
   };
 
@@ -302,21 +318,25 @@ const MenuBar = ({ allItems }) => {
                     justifyContent="flex-end"
                     alignItems="center"
                   >
-                    <IconButton
-                      color="inherit"
-                      onClick={handleHomeClick}
-                      sx={{ color: "black", mr: 1 }}
-                    >
-                      <HomeIcon sx={{ fontSize: 25 }} />
-                    </IconButton>
+                    {!isStoreWelcomePage ? (
+                      <IconButton
+                        color="inherit"
+                        onClick={handleHomeClick}
+                        sx={{ color: "black", mr: 1 }}
+                      >
+                        <HomeIcon sx={{ fontSize: 25 }} />
+                      </IconButton>
+                    ) : null}
 
-                    <IconButton
-                      color="inherit"
-                      onClick={handleCartClick}
-                      sx={{ mr: 1 }}
-                    >
-                      <ShoppingCartIcon sx={{ fontSize: 25 }} />
-                    </IconButton>
+                    {!isStoreWelcomePage ? (
+                      <IconButton
+                        color="inherit"
+                        onClick={handleCartClick}
+                        sx={{ mr: 1 }}
+                      >
+                        <ShoppingCartIcon sx={{ fontSize: 25 }} />
+                      </IconButton>
+                    ) : null}
 
                     <IconButton
                       color="inherit"

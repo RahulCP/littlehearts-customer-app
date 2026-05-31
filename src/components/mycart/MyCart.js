@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { API_BASE_URL } from "../../config/constants";
 import { buildImageUrl } from "../../utils/imageHelpers"; // ✅ adjust path if needed
+import { getStyleMeta } from "../../config/styleOptions";
 
 /* ---------------- CART HELPERS ---------------- */
 function getCartStorageKey(slug) {
@@ -31,6 +32,33 @@ function writeCart(slug, cartItems) {
 function money(n) {
   const v = Number(n || 0);
   return v.toFixed(2);
+}
+
+function styleMetaForLine(line) {
+  return getStyleMeta(line?.style_id) || {
+    label: line?.style_label || "",
+    hex: line?.style_hex || "",
+  };
+}
+
+function colorPillStyle(hex) {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+  };
+}
+
+function colorDotStyle(hex) {
+  return {
+    width: 14,
+    height: 14,
+    borderRadius: "50%",
+    background: hex || "#fff",
+    border: "1px solid rgba(0,0,0,0.25)",
+    boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.45)",
+    flex: "0 0 auto",
+  };
 }
 
 function formatDiscount(discount) {
@@ -720,6 +748,7 @@ export default function MyCart() {
 
               const imgToken = pickCartImage(line);
               const imgSrc = buildImageUrl(imgToken);
+              const styleMeta = styleMetaForLine(line);
 
               return (
                 <div key={`${line.store_slug}-${line.item_uid}`} style={styles.lineCard}>
@@ -759,7 +788,12 @@ export default function MyCart() {
                           </p>
 
                           <div style={styles.pillRow}>
-                            {line.style_label ? <span style={styles.pill}>{line.style_label}</span> : null}
+                            {styleMeta?.label ? (
+                              <span style={{ ...styles.pill, ...colorPillStyle(styleMeta.hex) }}>
+                                {styleMeta.hex ? <span style={colorDotStyle(styleMeta.hex)} /> : null}
+                                {styleMeta.label}
+                              </span>
+                            ) : null}
                             {line.subcategory_label ? (
                               <span style={styles.pill}>{line.subcategory_label}</span>
                             ) : null}

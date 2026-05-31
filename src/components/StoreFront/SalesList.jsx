@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Grid, Pagination, PaginationItem } from "@mui/material";
+import {
+  Box,
+  Button,
+  Grid,
+  Pagination,
+  PaginationItem,
+  Stack,
+} from "@mui/material";
 import {
   useLocation,
   useNavigate,
@@ -11,7 +18,7 @@ import axios from "axios";
 import SalesCard from "./SalesCard";
 import { API_BASE_URL } from "../../config/constants";
 import { FONT_FAMILY } from "../../config/themeConstants";
-import { ArrowCircleLeft, ArrowCircleRight } from "@mui/icons-material";
+import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
 
 function deriveSlugFromPath(pathname) {
   const path = String(pathname || "");
@@ -25,6 +32,110 @@ function deriveSlugFromPath(pathname) {
   if (m2?.[1]) return decodeURIComponent(m2[1]);
 
   return null;
+}
+
+const paginationButtonSx = {
+  textTransform: "none",
+  borderRadius: 1,
+  fontWeight: 800,
+  color: "#0f766e",
+  px: 0.5,
+  minWidth: "auto",
+  "&:hover": {
+    bgcolor: "transparent",
+    textDecoration: "underline",
+  },
+};
+
+const paginationSx = {
+  "& .MuiPagination-ul": {
+    gap: { xs: 0.2, sm: 0.45 },
+    justifyContent: "center",
+  },
+  "& .MuiPaginationItem-root": {
+    borderRadius: 1,
+    minWidth: 28,
+    height: 28,
+    mx: 0,
+    fontFamily: FONT_FAMILY,
+    fontWeight: 800,
+    color: "#334155",
+    border: "none",
+  },
+  "& .MuiPaginationItem-root.Mui-selected": {
+    bgcolor: "transparent",
+    color: "#0f766e",
+    textDecoration: "underline",
+    "&:hover": { bgcolor: "transparent" },
+  },
+};
+
+function PaginationBar({
+  currentPage,
+  pageCount,
+  totalItems,
+  itemsPerPage,
+  onPageChange,
+  compact = false,
+}) {
+  if (totalItems <= 0) return null;
+
+  const hasMultiplePages = totalItems > itemsPerPage;
+  if (!hasMultiplePages) return null;
+
+  const goPrevious = () => {
+    if (currentPage > 1) onPageChange(null, currentPage - 1);
+  };
+
+  const goNext = () => {
+    if (currentPage < pageCount) onPageChange(null, currentPage + 1);
+  };
+
+  return (
+    <Stack
+      direction={{ xs: "column", sm: "row" }}
+      spacing={1.2}
+      alignItems={{ xs: "stretch", sm: "center" }}
+      justifyContent="flex-end"
+      sx={{
+        py: { xs: 0.6, sm: 0.8 },
+      }}
+    >
+      <Stack direction="row" spacing={0.8} alignItems="center" justifyContent="flex-end">
+        <Button
+          variant="text"
+          size="small"
+          onClick={goPrevious}
+          disabled={currentPage <= 1}
+          sx={paginationButtonSx}
+        >
+          <KeyboardArrowLeft fontSize="small" />
+        </Button>
+
+        <Pagination
+          count={pageCount || 1}
+          page={currentPage}
+          onChange={onPageChange}
+          siblingCount={compact ? 0 : 1}
+          boundaryCount={compact ? 1 : 1}
+          hidePrevButton
+          hideNextButton
+          renderItem={(item) => <PaginationItem {...item} />}
+          sx={paginationSx}
+        />
+
+        <Button
+          variant="text"
+          size="small"
+          onClick={goNext}
+          disabled={currentPage >= pageCount}
+          sx={paginationButtonSx}
+        >
+          <KeyboardArrowRight fontSize="small" />
+        </Button>
+      </Stack>
+    </Stack>
+  );
 }
 
 const SalesList = () => {
@@ -83,6 +194,7 @@ const SalesList = () => {
 
   /* -------------------- pagination -------------------- */
   const pageCount = Math.ceil(allProducts.length / itemsPerPage);
+  const totalItems = allProducts.length;
 
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -91,6 +203,12 @@ const SalesList = () => {
 
   const handlePageChange = (event, value) => setCurrentPage(value);
 
+  useEffect(() => {
+    if (pageCount > 0 && currentPage > pageCount) {
+      setCurrentPage(pageCount);
+    }
+  }, [currentPage, pageCount]);
+
   /* -------------------- navigation -------------------- */
   const viewProductDetails = (productUid, itemUid) => {
     const qs = itemUid ? `?itemUid=${encodeURIComponent(itemUid)}` : "";
@@ -98,47 +216,18 @@ const SalesList = () => {
   };
 
   return (
-    <Box>
+    <Box sx={{ maxWidth: 1280, mx: "auto", px: { xs: 1, sm: 1.5, md: 2 } }}>
       {/* Top pagination */}
-      <Grid
-        container
-        alignItems="center"
-        justifyContent="flex-end"
-        sx={{ height: { xs: "40px", md: "60px" }, mb: { xs: 2, md: 2 } }}
-      >
-        <Pagination
-          count={pageCount || 1}
-          page={currentPage}
-          onChange={handlePageChange}
-          siblingCount={1}
-          boundaryCount={1}
-          renderItem={(item) => (
-            <PaginationItem
-              {...item}
-              components={{ previous: ArrowCircleLeft, next: ArrowCircleRight }}
-              sx={{
-                fontFamily: FONT_FAMILY,
-                fontSize:
-                  item.type === "previous" || item.type === "next" ? "30px" : "20px",
-                "& svg": { fontSize: "30px" },
-                color:
-                  item.type === "previous" || item.type === "next"
-                    ? item.disabled
-                      ? "gray"
-                      : "teal"
-                    : item.selected
-                    ? "red"
-                    : "black",
-              }}
-            />
-          )}
-          sx={{
-            maxWidth: 320,
-            "& .MuiPaginationItem-root": { minWidth: 26, height: 26, mx: "3px" },
-            "& .Mui-selected": { fontWeight: "bold", backgroundColor: "transparent" },
-          }}
+      <Box sx={{ mb: { xs: 1.6, md: 2.2 } }}>
+        <PaginationBar
+          currentPage={currentPage}
+          pageCount={pageCount}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={handlePageChange}
+          compact
         />
-      </Grid>
+      </Box>
 
       {/* Product grid */}
       <Grid container spacing={2}>
@@ -161,35 +250,15 @@ const SalesList = () => {
       </Grid>
 
       {/* Bottom pagination */}
-      <Grid container justifyContent="center" mt={3}>
-        <Pagination
-          count={pageCount || 1}
-          page={currentPage}
-          onChange={handlePageChange}
-          siblingCount={1}
-          boundaryCount={1}
-          renderItem={(item) => (
-            <PaginationItem
-              {...item}
-              components={{ previous: ArrowCircleLeft, next: ArrowCircleRight }}
-              sx={{
-                fontFamily: FONT_FAMILY,
-                fontSize:
-                  item.type === "previous" || item.type === "next" ? "30px" : "20px",
-                "& svg": { fontSize: "30px" },
-                color:
-                  item.type === "previous" || item.type === "next"
-                    ? item.disabled
-                      ? "gray"
-                      : "teal"
-                    : item.selected
-                    ? "red"
-                    : "black",
-              }}
-            />
-          )}
+      <Box sx={{ mt: { xs: 2.4, md: 3.5 } }}>
+        <PaginationBar
+          currentPage={currentPage}
+          pageCount={pageCount}
+          totalItems={totalItems}
+          itemsPerPage={itemsPerPage}
+          onPageChange={handlePageChange}
         />
-      </Grid>
+      </Box>
 
       {loading && (
         <Box sx={{ mt: 2, opacity: 0.7, textAlign: "center" }}>Loading…</Box>

@@ -22,6 +22,8 @@ import StoreProductDetails from "./components/StoreProducts/ProductDetails";
 import MyCart from "./components/mycart/MyCart";
 import Checkout from "./components/checkout/Checkout";
 import Confirmation from "./components/checkout/Confirmation";
+import StoreWelcome from "./components/StoreWelcome/StoreWelcome";
+import CustomerOrders from "./components/CustomerOrders/CustomerOrders";
 
 const ImageCacheContext = createContext();
 export const useImageCache = () => useContext(ImageCacheContext);
@@ -128,10 +130,9 @@ function App() {
 
                   {/* ================= STORE FRONT ================= */}
 
-                  {/* ✅ IMPORTANT: handle /store/:slug */}
                   <Route
                     path="/store/:slug"
-                    element={<Navigate to="products" replace />}
+                    element={<StoreWelcome />}
                   />
 
                   <Route
@@ -150,10 +151,19 @@ function App() {
                   />
 
                   <Route
+                    path="/store/:slug/my-orders"
+                    element={<CustomerOrders />}
+                  />
+
+                  <Route
                     path="/store/:slug/checkout"
                     element={<Checkout />}
                   />
                   <Route path="/store/:slug/confirmation" element={<Confirmation />} />
+
+                  {/* Public domain style: https://www.illolam.com/:storecode */}
+                  <Route path="/:slug" element={<StoreWelcome />} />
+
                   {/* Fallback */}
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>

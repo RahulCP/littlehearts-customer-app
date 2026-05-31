@@ -18,11 +18,31 @@ import {
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 
 import ProductImageSlider from "./ProductImageSlider";
-import { STYLE_MAP } from "../../config/styleOptions";
+import { STYLE_MAP, getStyleMeta } from "../../config/styleOptions";
 import { API_BASE_URL } from "../../config/constants";
 
 /* ✅ PAGE FONT (change here once) */
 const PAGE_FONT = `"Assistant", sans-serif`;
+
+function ColorDot({ hex, size = 18, selected = false }) {
+  if (!hex) return null;
+  return (
+    <Box
+      component="span"
+      sx={{
+        width: size,
+        height: size,
+        borderRadius: "50%",
+        bgcolor: hex.startsWith("linear-gradient") ? undefined : hex,
+        background: hex.startsWith("linear-gradient") ? hex : undefined,
+        border: selected ? "2px solid #111" : "1px solid rgba(0,0,0,0.25)",
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5)",
+        display: "inline-block",
+        flex: "0 0 auto",
+      }}
+    />
+  );
+}
 
 /* ---------------- CART HELPERS ---------------- */
 function getCartStorageKey(slug) {
@@ -88,7 +108,11 @@ function addToCart(slug, cartLine) {
 }
 
 /* ---------------- helpers ---------------- */
-function money0(v) {
+function money2(v) {
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+}
+function percent0(v) {
   const n = Number(v || 0);
   return Number.isFinite(n) ? n.toFixed(0) : "0";
 }
@@ -297,7 +321,7 @@ const ProductDetails = () => {
     const name = String(
       product?.offer?.name || product?.offer?.badge_text || "Offer"
     );
-    return `${name} · ${money0(pct)}%`;
+    return `${name} · ${percent0(pct)}%`;
   }, [product?.offer]);
 
   const stockMeta = useMemo(() => {
@@ -391,6 +415,9 @@ const ProductDetails = () => {
       const styleLabel = preferredItem?.style_id
         ? STYLE_MAP[String(preferredItem.style_id)] || null
         : null;
+      const styleHex = preferredItem?.style_id
+        ? getStyleMeta(preferredItem.style_id)?.hex || null
+        : null;
 
       const subcatLabel =
         preferredItem?.subcategory_name ||
@@ -407,6 +434,7 @@ const ProductDetails = () => {
 
         style_id: preferredItem.style_id ?? null,
         style_label: styleLabel,
+        style_hex: styleHex,
 
         selling_price: Number(preferredItem.selling_price || 0),
         strike_price:
@@ -444,6 +472,9 @@ const ProductDetails = () => {
       const styleLabel = preferredItem?.style_id
         ? STYLE_MAP[String(preferredItem.style_id)] || null
         : null;
+      const styleHex = preferredItem?.style_id
+        ? getStyleMeta(preferredItem.style_id)?.hex || null
+        : null;
 
       const subcatLabel =
         preferredItem?.subcategory_name ||
@@ -460,6 +491,7 @@ const ProductDetails = () => {
 
         style_id: preferredItem.style_id ?? null,
         style_label: styleLabel,
+        style_hex: styleHex,
 
         selling_price: Number(preferredItem.selling_price || 0),
         strike_price:
@@ -545,7 +577,7 @@ const ProductDetails = () => {
               <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
                 {/* Price (GREEN) */}
                 <Typography sx={{ fontWeight: 950, fontSize: 22, color: "#1B8A3A" }}>
-                  ₹{money0(sellingPrice)}
+                  ₹{money2(sellingPrice)}
                 </Typography>
 
                 {/* Strike (RED) */}
@@ -558,7 +590,7 @@ const ProductDetails = () => {
                       textDecoration: "line-through",
                     }}
                   >
-                    ₹{money0(strikePrice)}
+                    ₹{money2(strikePrice)}
                   </Typography>
                 )}
 
@@ -595,7 +627,7 @@ const ProductDetails = () => {
 
               <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mt: 1 }}>
                 <Typography sx={{ fontWeight: 950, fontSize: 26 }}>
-                  ₹{money0(sellingPrice)}
+                  ₹{money2(sellingPrice)}
                 </Typography>
 
                 {showStrike && (
@@ -607,7 +639,7 @@ const ProductDetails = () => {
                       textDecoration: "line-through",
                     }}
                   >
-                    ₹{money0(strikePrice)}
+                    ₹{money2(strikePrice)}
                   </Typography>
                 )}
               </Stack>
@@ -693,12 +725,14 @@ const ProductDetails = () => {
                 sx={{ rowGap: 0.6 }}
               >
                 {compatibleStyles.map((sid) => {
-                  const label = STYLE_MAP[String(sid)] || `Style ${sid}`;
+                  const meta = getStyleMeta(sid);
+                  const label = meta?.label || STYLE_MAP[String(sid)] || `Style ${sid}`;
                   const selected = String(selectedStyleId || "") === String(sid);
                   return (
                     <Chip
                       key={sid}
                       label={label}
+                      icon={<ColorDot hex={meta?.hex} selected={selected} />}
                       clickable
                       onClick={() => handleSelectStyle(sid)}
                       variant={selected ? "filled" : "outlined"}
@@ -706,9 +740,10 @@ const ProductDetails = () => {
                         fontWeight: 950,
                         borderRadius: 999,
                         borderColor: selected ? "#111" : "rgba(0,0,0,0.18)",
-                        bgcolor: selected ? "#111" : "transparent",
-                        color: selected ? "#fff" : "#111",
+                        bgcolor: selected ? "#f8fafc" : "transparent",
+                        color: "#111",
                         height: 30,
+                        "& .MuiChip-icon": { ml: 0.8 },
                         "& .MuiChip-label": { px: 1.1 },
                       }}
                     />

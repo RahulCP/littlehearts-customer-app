@@ -2,7 +2,12 @@ import React, { useMemo } from "react";
 import ProductImageSingle from "./ProductImageSingle";
 import "./ProductCard.css";
 
-function money0(v) {
+function money2(v) {
+  const n = Number(v || 0);
+  return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+}
+
+function percent0(v) {
   const n = Number(v || 0);
   return Number.isFinite(n) ? n.toFixed(0) : "0";
 }
@@ -24,7 +29,7 @@ const ProductCard = ({ p, onClick }) => {
     const name = String(p?.offer?.name || "").trim();
     const badge = String(p?.offer?.badge_text || "").trim();
     const title = name || badge || "Offer";
-    return `${title} · ${money0(salePercent)}%`;
+    return `${title} · ${percent0(salePercent)}%`;
   }, [hasOffer, p, salePercent]);
 
   const showStrike = useMemo(() => {
@@ -61,9 +66,9 @@ const ProductCard = ({ p, onClick }) => {
         {/* Price line: strike first then selling */}
         <div className="pcPriceRow">
           {showStrike ? (
-            <span className="pcStrike">₹{money0(p?.strike_price)}</span>
+            <span className="pcStrike">₹{money2(p?.strike_price)}</span>
           ) : null}
-          <span className="pcPrice">₹{money0(p?.selling_price)}</span>
+          <span className="pcPrice">₹{money2(p?.selling_price)}</span>
         </div>
 
         {/* Qty left */}
