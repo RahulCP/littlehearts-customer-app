@@ -173,10 +173,7 @@ const MenuBar = ({ allItems }) => {
       });
     });
 
-    // ✅ show only when customer token exists for this store
-    if (isCustomerLoggedIn) {
-      menuItems.push({ text: "My Orders", href: `/store/${storeSlug}/my-orders`, priority: true });
-    }
+    menuItems.push({ text: "My Orders", href: `/store/${storeSlug}/my-orders`, priority: true });
 
     if (!isStoreWelcomePage) {
       menuItems.push({ text: "My Cart", href: `/store/${storeSlug}/my-cart` });
@@ -354,16 +351,14 @@ const MenuBar = ({ allItems }) => {
                       <SearchIcon sx={{ fontSize: 25 }} />
                     </IconButton>
 
-                    {isCustomerLoggedIn ? (
-                      <IconButton
-                        color="inherit"
-                        onClick={handleOrdersClick}
-                        title="My Orders"
-                        sx={{ mr: 1 }}
-                      >
-                        <ReceiptLongIcon sx={{ fontSize: 25 }} />
-                      </IconButton>
-                    ) : null}
+                    <IconButton
+                      color="inherit"
+                      onClick={handleOrdersClick}
+                      title="My Orders"
+                      sx={{ mr: 1 }}
+                    >
+                      <ReceiptLongIcon sx={{ fontSize: 25 }} />
+                    </IconButton>
 
                     {/* ✅ Auth icon (Mobile) */}
                     <CustomerAuthButtons storeSlug={storeSlug} variant="mobile" />
