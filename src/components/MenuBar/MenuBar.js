@@ -15,6 +15,7 @@ import MenuIcon from "@mui/icons-material/Menu";
 import SearchIcon from "@mui/icons-material/Search";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import HomeIcon from "@mui/icons-material/Home";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 
 import SearchDrawer from "../SalesRecordPage/SearchDrawer";
 import SearchWithDropdown from "../SalesRecordPage/SearchWithDropdown";
@@ -174,7 +175,7 @@ const MenuBar = ({ allItems }) => {
 
     // ✅ show only when customer token exists for this store
     if (isCustomerLoggedIn) {
-      menuItems.push({ text: "My Orders", href: `/store/${storeSlug}/my-orders` });
+      menuItems.push({ text: "My Orders", href: `/store/${storeSlug}/my-orders`, priority: true });
     }
 
     if (!isStoreWelcomePage) {
@@ -227,6 +228,11 @@ const MenuBar = ({ allItems }) => {
   const handleCartClick = () => {
     if (storeSlug) navigate(`/store/${storeSlug}/my-cart`);
     else navigate("/"); // no store => go home
+  };
+
+  const handleOrdersClick = () => {
+    if (storeSlug) navigate(`/store/${storeSlug}/my-orders`);
+    else navigate("/");
   };
 
   // Optional: drawer text animation if you still use anime.js
@@ -300,7 +306,9 @@ const MenuBar = ({ allItems }) => {
                   gap: 2,
                 }}
               >
-                <MovingMenu menuItems={menuItems} />
+                <MovingMenu
+                  menuItems={isStoreWelcomePage ? menuItems.filter((item) => item.priority) : menuItems}
+                />
 
                 {/* ✅ Auth area (Desktop) */}
                 <CustomerAuthButtons storeSlug={storeSlug} variant="desktop" />
@@ -345,6 +353,17 @@ const MenuBar = ({ allItems }) => {
                     >
                       <SearchIcon sx={{ fontSize: 25 }} />
                     </IconButton>
+
+                    {isCustomerLoggedIn ? (
+                      <IconButton
+                        color="inherit"
+                        onClick={handleOrdersClick}
+                        title="My Orders"
+                        sx={{ mr: 1 }}
+                      >
+                        <ReceiptLongIcon sx={{ fontSize: 25 }} />
+                      </IconButton>
+                    ) : null}
 
                     {/* ✅ Auth icon (Mobile) */}
                     <CustomerAuthButtons storeSlug={storeSlug} variant="mobile" />
