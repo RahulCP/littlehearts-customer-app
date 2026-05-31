@@ -19,6 +19,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import { API_BASE_URL } from "../../config/constants";
 import CustomerAuthButtons from "../../auth/CustomerAuthButtons";
+import { ensureStoreCustomerSession } from "../../auth/customerSession";
 
 function money(value) {
   const n = Number(value || 0);
@@ -54,6 +55,7 @@ export default function CustomerOrders() {
   const navigate = useNavigate();
   const [authTick, setAuthTick] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [sessionSyncing, setSessionSyncing] = useState(false);
   const [orders, setOrders] = useState([]);
   const [error, setError] = useState("");
 
@@ -72,6 +74,27 @@ export default function CustomerOrders() {
     if (!slug) return null;
     return localStorage.getItem(`store_customer_token_${slug}`);
   }, [slug, authTick]);
+
+  useEffect(() => {
+    if (!slug || token) return;
+
+    let cancelled = false;
+    setSessionSyncing(true);
+    ensureStoreCustomerSession(slug)
+      .then((session) => {
+        if (!cancelled && session?.token) setAuthTick((v) => v + 1);
+      })
+      .catch((err) => {
+        console.warn("Could not sync customer session:", err?.message || err);
+      })
+      .finally(() => {
+        if (!cancelled) setSessionSyncing(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug, token, authTick]);
 
   useEffect(() => {
     if (!slug || !token) {
@@ -93,6 +116,12 @@ export default function CustomerOrders() {
       })
       .catch((err) => {
         if (cancelled) return;
+        if (err?.response?.status === 401) {
+          localStorage.removeItem(`store_customer_token_${slug}`);
+          localStorage.removeItem(`store_customer_${slug}`);
+          setAuthTick((v) => v + 1);
+          return;
+        }
         setError(err?.response?.data?.message || "Could not load your orders.");
         setOrders([]);
       })
@@ -121,7 +150,14 @@ export default function CustomerOrders() {
         <CustomerAuthButtons storeSlug={slug} />
       </Stack>
 
-      {!token ? (
+      {sessionSyncing ? (
+        <Box sx={{ display: "grid", placeItems: "center", py: 7 }}>
+          <CircularProgress size={28} />
+          <Typography sx={{ mt: 1, color: "text.secondary", fontSize: 13 }}>
+            Checking your sign-in session…
+          </Typography>
+        </Box>
+      ) : !token ? (
         <Card sx={{ borderRadius: 2, border: "1px solid #e5e7eb", boxShadow: "none" }}>
           <CardContent sx={{ textAlign: "center", py: 5 }}>
             <ReceiptLongIcon sx={{ fontSize: 44, color: "#64748b", mb: 1 }} />

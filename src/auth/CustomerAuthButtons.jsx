@@ -1,15 +1,13 @@
 // src/components/auth/CustomerAuthButtons.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Box, Button, IconButton, Avatar, Typography } from "@mui/material";
 import LogoutIcon from "@mui/icons-material/Logout";
-import axios from "axios";
-
-import { API_BASE_URL } from "../config/constants";
 import {
   loginWithGoogle,
   logout as firebaseLogout,
   getAuthUser,
 } from "./firebaseAuth";
+import { ensureStoreCustomerSession } from "./customerSession";
 
 function GoogleLogo({ size = 20 }) {
   return (
@@ -73,6 +71,23 @@ export default function CustomerAuthButtons({
     };
   }, [storeSlug]);
 
+  useEffect(() => {
+    const refreshAuthUser = () => setAuthUser(getAuthUser());
+    window.addEventListener("customer-auth-changed", refreshAuthUser);
+    window.addEventListener("storage", refreshAuthUser);
+    return () => {
+      window.removeEventListener("customer-auth-changed", refreshAuthUser);
+      window.removeEventListener("storage", refreshAuthUser);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!storeSlug || !authUser) return;
+    ensureStoreCustomerSession(storeSlug).catch((err) => {
+      console.warn("Store customer session sync failed:", err?.message || err);
+    });
+  }, [storeSlug, authUser]);
+
   const handleLogin = async () => {
     try {
       // 1) Firebase login
@@ -83,16 +98,7 @@ export default function CustomerAuthButtons({
 
       // 2) If inside a store page, sync/create customer in backend
       if (storeSlug) {
-        const { data } = await axios.post(
-          `${API_BASE_URL}/store/${storeSlug}/auth/google`,
-          { idToken }
-        );
-
-        // 3) Store backend session (store-scoped)
-        if (keys) {
-          localStorage.setItem(keys.tokenKey, data.token);
-          localStorage.setItem(keys.customerKey, JSON.stringify(data.customer));
-        }
+        await ensureStoreCustomerSession(storeSlug, idToken);
       }
 
       window.dispatchEvent(new Event("customer-auth-changed"));
