@@ -21,6 +21,7 @@ import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import { API_BASE_URL } from "../../config/constants";
 import { ensureStoreCustomerSession } from "../../auth/customerSession";
 import { buildImageUrl } from "../../utils/imageHelpers";
+import StorePageBar from "../StoreNavigation/StorePageBar";
 
 function money(value) {
   const n = Number(value || 0);
@@ -210,7 +211,15 @@ export default function CustomerOrders() {
   }, [slug, token]);
 
   return (
-    <Box sx={{ maxWidth: 960, mx: "auto", px: { xs: 1.2, sm: 2 }, py: { xs: 2, md: 4 } }}>
+    <Box sx={{ maxWidth: 960, mx: "auto", px: { xs: 1.2, sm: 2 }, pt: { xs: 0.7, md: 2 }, pb: { xs: 2, md: 4 } }}>
+      <StorePageBar
+        slug={slug}
+        homeLabel="All Items"
+        homeTo={`/store/${encodeURIComponent(slug)}/products`}
+        current="My Orders"
+        sx={{ mb: { xs: 1.1, md: 1.5 } }}
+      />
+
       <Box sx={{ mb: 2.2 }}>
         <Typography sx={{ fontWeight: 950, fontSize: { xs: 25, md: 34 }, letterSpacing: 0 }}>
           My Orders

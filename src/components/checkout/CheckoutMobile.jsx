@@ -1,9 +1,10 @@
 // src/pages/store/CheckoutMobile.jsx
-import React from "react";
+import React, { useState } from "react";
 import { money, toInt } from "./checkoutUtils";
 import { buildImageUrl } from "../../utils/imageHelpers";
 import { INDIAN_STATES, KERALA_DISTRICTS, isKerala } from "../../constants/addressOptions";
 import { getStyleMeta } from "../../config/styleOptions";
+import { normalizeEmailInput, normalizePhoneInput } from "./contactFormat";
 
 function colorDotStyle(hex) {
   return {
@@ -34,20 +35,26 @@ function Section({ title, children }) {
   );
 }
 
-function Field({ S, label, value, onChange, placeholder = "" }) {
+function Field({ S, label, value, onChange, placeholder = "", error = "", type = "text" }) {
   return (
     <div style={S.field}>
       <div style={S.label}>{label}</div>
-      <input style={S.input} value={value} onChange={onChange} placeholder={placeholder} />
+      <input
+        type={type}
+        style={{ ...S.input, ...(error ? S.inputError : null) }}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+      />
     </div>
   );
 }
 
-function SelectField({ S, label, value, onChange, children }) {
+function SelectField({ S, label, value, onChange, children, error = "" }) {
   return (
     <div style={S.field}>
       <div style={S.label}>{label}</div>
-      <select style={{ ...S.input, background: "#fff" }} value={value} onChange={onChange}>
+      <select style={{ ...S.input, ...(error ? S.inputError : null), background: "#fff" }} value={value} onChange={onChange}>
         {children}
       </select>
     </div>
@@ -88,14 +95,17 @@ export default function CheckoutMobile({
 
   canGoStep2,
   canGoStep3,
+  contactErrors = {},
+  addressErrors = {},
 
   loading,
   onPayNow,
   onOpenCoupons,
 }) {
+  const [summaryOpen, setSummaryOpen] = useState(false);
+
   return (
     <div style={{ marginTop: 12 }}>
-      {/* Always-open order summary */}
       <div
         style={{
           border: "1px solid #eee",
@@ -105,187 +115,224 @@ export default function CheckoutMobile({
           boxShadow: "0 8px 20px rgba(0,0,0,0.05)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontWeight: 900 }}>Order summary</div>
-          <div style={{ marginLeft: "auto", fontWeight: 900, fontSize: 16 }}>₹{money(coupons.grandTotal)}</div>
-        </div>
+        <button
+          type="button"
+          onClick={() => setSummaryOpen((v) => !v)}
+          aria-expanded={summaryOpen}
+          style={{
+            width: "100%",
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: "50%",
+              border: "1px solid #d8eee9",
+              background: "#f0faf7",
+              color: "#0f766e",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 18,
+              fontWeight: 900,
+              transform: summaryOpen ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 160ms ease",
+              flex: "0 0 auto",
+            }}
+          >
+           ⌄
+          </span>
+          <span style={{ fontWeight: 900, flex: 1 }}>Order summary</span>
+          <span style={{ fontWeight: 900, fontSize: 16 }}>₹{money(coupons.grandTotal)}</span>
+        </button>
 
-        <div style={{ marginTop: 10, display: "grid", gap: 10, maxHeight: 280, overflow: "auto" }}>
-          {cart.map((x) => {
-            const imgSrc = buildImageUrl(pickCartImage(x));
-            const color = colorLabel(x);
+        {summaryOpen ? (
+          <>
+            <div style={{ marginTop: 10, display: "grid", gap: 10, maxHeight: 280, overflow: "auto" }}>
+              {cart.map((x) => {
+                const imgSrc = buildImageUrl(pickCartImage(x));
+                const color = colorLabel(x);
 
-            return (
-              <div
-                key={x.item_uid}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "54px 1fr auto",
-                  gap: 10,
-                  padding: 10,
-                  border: "1px solid #eee",
-                  borderRadius: 12,
-                  background: "#fafafa",
-                  alignItems: "center",
-                }}
-              >
+                return (
                 <div
+                  key={x.item_uid}
                   style={{
-                    width: 54,
-                    height: 54,
-                    borderRadius: 10,
-                    overflow: "hidden",
-                    background: "#f3f4f6",
+                    display: "grid",
+                    gridTemplateColumns: "54px minmax(0, 1fr) minmax(68px, auto)",
+                    gap: 10,
+                    padding: 10,
                     border: "1px solid #eee",
-                    display: "flex",
+                    borderRadius: 12,
+                    background: "#fafafa",
                     alignItems: "center",
-                    justifyContent: "center",
                   }}
                 >
-                  {imgSrc ? (
-                    <img
-                      src={imgSrc}
-                      alt={x.product_label || "Product"}
-                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: 10, color: "#777", fontWeight: 800 }}>No image</span>
-                  )}
-                </div>
+                  <div
+                    style={{
+                      width: 54,
+                      height: 54,
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      background: "#f3f4f6",
+                      border: "1px solid #eee",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {imgSrc ? (
+                      <img
+                        src={imgSrc}
+                        alt={x.product_label || "Product"}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: 10, color: "#777", fontWeight: 800 }}>No image</span>
+                    )}
+                  </div>
 
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 900, fontSize: 13 }}>{x.product_label || "Product"}</div>
-                  {color ? (
-                    <div style={{ marginTop: 4, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", fontWeight: 800 }}>
-                      {color.hex ? <span style={colorDotStyle(color.hex)} /> : null}
-                      {color.label}
-                    </div>
-                  ) : null}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 900, fontSize: 13 }}>{x.product_label || "Product"}</div>
+                    {color ? (
+                      <div style={{ marginTop: 4, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555", fontWeight: 800 }}>
+                        {color.hex ? <span style={colorDotStyle(color.hex)} /> : null}
+                        {color.label}
+                      </div>
+                    ) : null}
 
-                  <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
-                    <button onClick={() => updateQty(x.item_uid, -1)} style={S.miniBtn} type="button">
-                      –
-                    </button>
-                    <div style={{ fontWeight: 900, width: 26, textAlign: "center" }}>
-                      {toInt(x.quantity || 1, 1)}
+                    <div style={{ marginTop: 8, display: "flex", gap: 8, alignItems: "center" }}>
+                      <button onClick={() => updateQty(x.item_uid, -1)} style={S.miniBtn} type="button">
+                        –
+                      </button>
+                      <div style={{ fontWeight: 900, width: 26, textAlign: "center" }}>
+                        {toInt(x.quantity || 1, 1)}
+                      </div>
+                      <button onClick={() => updateQty(x.item_uid, +1)} style={S.miniBtn} type="button">
+                        +
+                      </button>
                     </div>
-                    <button onClick={() => updateQty(x.item_uid, +1)} style={S.miniBtn} type="button">
-                      +
-                    </button>
+                  </div>
+
+                  <div style={{ textAlign: "right", minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: "#666" }}>₹{money(x.selling_price)}</div>
+                    <div style={{ fontSize: 14, fontWeight: 900, marginTop: 6 }}>
+                      ₹{money(Number(x.selling_price || 0) * toInt(x.quantity || 1, 1))}
+                    </div>
                   </div>
                 </div>
+                );
+              })}
+            </div>
 
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 12, color: "#666" }}>₹{money(x.selling_price)}</div>
-                  <div style={{ fontSize: 14, fontWeight: 900, marginTop: 6 }}>
-                    ₹{money(Number(x.selling_price || 0) * toInt(x.quantity || 1, 1))}
-                  </div>
-                </div>
+            <div style={{ height: 1, background: "#eee", margin: "12px 0" }} />
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={S.muted}>Subtotal</span>
+              <strong>₹{money(subtotal)}</strong>
+            </div>
+
+            {Number(coupons.autoDiscount || 0) > 0 ? (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={S.muted}>{coupons.autoName ? `Auto offer: ${coupons.autoName}` : "Auto offer"}</span>
+                <strong>- ₹{money(coupons.autoDiscount)}</strong>
               </div>
-            );
-          })}
-        </div>
+            ) : null}
 
-        <div style={{ height: 1, background: "#eee", margin: "12px 0" }} />
+            {Number(coupons.manualDiscountPreview || 0) > 0 ? (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={S.muted}>{coupons.manualName ? `Coupon: ${coupons.manualName}` : "Coupon"}</span>
+                <strong>- ₹{money(coupons.manualDiscountPreview)}</strong>
+              </div>
+            ) : null}
 
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-          <span style={S.muted}>Subtotal</span>
-          <strong>₹{money(subtotal)}</strong>
-        </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+              <span style={S.muted}>Offers</span>
+              <button style={S.link} onClick={onOpenCoupons} type="button">
+                View offers
+              </button>
+            </div>
 
-        {Number(coupons.autoDiscount || 0) > 0 ? (
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={S.muted}>{coupons.autoName ? `Auto offer: ${coupons.autoName}` : "Auto offer"}</span>
-            <strong>- ₹{money(coupons.autoDiscount)}</strong>
-          </div>
+            <div style={{ height: 1, background: "#eee", margin: "12px 0" }} />
+
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontWeight: 900 }}>Total</span>
+              <span style={{ fontWeight: 900, fontSize: 18 }}>₹{money(coupons.grandTotal)}</span>
+            </div>
+          </>
         ) : null}
-
-        {Number(coupons.manualDiscountPreview || 0) > 0 ? (
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-            <span style={S.muted}>{coupons.manualName ? `Coupon: ${coupons.manualName}` : "Coupon"}</span>
-            <strong>- ₹{money(coupons.manualDiscountPreview)}</strong>
-          </div>
-        ) : null}
-
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-          <span style={S.muted}>Offers</span>
-          <button style={S.link} onClick={onOpenCoupons} type="button">
-            View offers
-          </button>
-        </div>
-
-        <div style={{ height: 1, background: "#eee", margin: "12px 0" }} />
-
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span style={{ fontWeight: 900 }}>Total</span>
-          <span style={{ fontWeight: 900, fontSize: 18 }}>₹{money(coupons.grandTotal)}</span>
-        </div>
       </div>
 
       {/* Main form card */}
       <div style={{ ...S.card, marginTop: 12 }}>
         <Section title="Contact Details">
-          <div style={S.row}>
+          <div>
             <Field
               S={S}
               label="Full name *"
               value={buyer.name}
               onChange={(e) => setBuyer((p) => ({ ...p, name: e.target.value }))}
+              error={contactErrors.name}
             />
+          </div>
+
+          <div style={{ marginTop: 10, ...S.twoCol }}>
             <Field
               S={S}
               label="Phone *"
               value={buyer.phone}
-              onChange={(e) => setBuyer((p) => ({ ...p, phone: e.target.value }))}
+              onChange={(e) => setBuyer((p) => ({ ...p, phone: normalizePhoneInput(e.target.value) }))}
+              error={contactErrors.phone}
             />
-          </div>
-
-          <div style={{ marginTop: 10 }}>
             <Field
               S={S}
-              label="Email (optional)"
+              label="Email *"
+              type="email"
               value={buyer.email}
-              onChange={(e) => setBuyer((p) => ({ ...p, email: e.target.value }))}
+              onChange={(e) => setBuyer((p) => ({ ...p, email: normalizeEmailInput(e.target.value) }))}
+              error={contactErrors.email}
             />
           </div>
 
-          {!canGoStep2 ? (
-            <div style={{ marginTop: 8, fontSize: 12, color: "#b91c1c", fontWeight: 800 }}>
-              Please enter contact name and phone.
-            </div>
-          ) : null}
         </Section>
 
         <Section title="Mailing Details">
-          <div style={S.row}>
+          <div>
             <Field
               S={S}
               label="Recipient name *"
               value={address.receiver_name}
               onChange={(e) => setAddress((p) => ({ ...p, receiver_name: e.target.value }))}
+              error={addressErrors.receiver_name}
             />
+          </div>
+
+          <div style={{ marginTop: 10, ...S.twoCol }}>
             <Field
               S={S}
               label="Recipient phone *"
               value={address.receiver_phone}
-              onChange={(e) => setAddress((p) => ({ ...p, receiver_phone: e.target.value }))}
+              onChange={(e) => setAddress((p) => ({ ...p, receiver_phone: normalizePhoneInput(e.target.value) }))}
+              error={addressErrors.receiver_phone}
             />
-          </div>
-
-          <div style={{ marginTop: 10 }}>
             <Field
               S={S}
-              label="Recipient email (optional)"
+              label="Recipient email *"
+              type="email"
               value={address.receiver_email}
-              onChange={(e) => setAddress((p) => ({ ...p, receiver_email: e.target.value }))}
+              onChange={(e) => setAddress((p) => ({ ...p, receiver_email: normalizeEmailInput(e.target.value) }))}
+              error={addressErrors.receiver_email}
             />
           </div>
-
-          {!canGoStep3 ? (
-            <div style={{ marginTop: 8, fontSize: 12, color: "#b91c1c", fontWeight: 800 }}>
-              Please fill recipient and delivery address.
-            </div>
-          ) : null}
 
           <div style={{ marginTop: 12 }}>
             <Field
@@ -294,6 +341,7 @@ export default function CheckoutMobile({
               value={address.address_line1}
               onChange={(e) => setAddress((p) => ({ ...p, address_line1: e.target.value }))}
               placeholder="House, street, area"
+              error={addressErrors.address_line1}
             />
           </div>
 
@@ -307,18 +355,20 @@ export default function CheckoutMobile({
             />
           </div>
 
-          <div style={{ marginTop: 10, ...S.row }}>
+          <div style={{ marginTop: 10, ...S.twoCol }}>
             <Field
               S={S}
               label="City *"
               value={address.city}
               onChange={(e) => setAddress((p) => ({ ...p, city: e.target.value }))}
+              error={addressErrors.city}
             />
             {isKerala(address.state) ? (
               <SelectField
                 S={S}
-                label="District"
+                label="District *"
                 value={address.district}
+                error={addressErrors.district}
                 onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))}
               >
                 <option value="">Select district</option>
@@ -331,18 +381,20 @@ export default function CheckoutMobile({
             ) : (
               <Field
                 S={S}
-                label="District"
+                label="District *"
                 value={address.district}
                 onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))}
+                error={addressErrors.district}
               />
             )}
           </div>
 
-          <div style={{ marginTop: 10, ...S.row }}>
+          <div style={{ marginTop: 10, ...S.twoCol }}>
             <SelectField
               S={S}
               label="State *"
               value={address.state}
+              error={addressErrors.state}
               onChange={(e) =>
                 setAddress((p) => ({
                   ...p,
@@ -363,6 +415,7 @@ export default function CheckoutMobile({
               label="Pincode *"
               value={address.pincode}
               onChange={(e) => setAddress((p) => ({ ...p, pincode: e.target.value }))}
+              error={addressErrors.pincode}
             />
           </div>
         </Section>

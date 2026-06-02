@@ -20,12 +20,25 @@ import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import ProductImageSlider from "./ProductImageSlider";
 import { STYLE_MAP, getStyleMeta } from "../../config/styleOptions";
 import { API_BASE_URL } from "../../config/constants";
+import StorePageBar from "../StoreNavigation/StorePageBar";
+import { availabilityMessage, checkRequestedQuantity } from "../../utils/cartAvailability";
 
 /* ✅ PAGE FONT (change here once) */
 const PAGE_FONT = `"Assistant", sans-serif`;
+const ACCENT = "#0f766e";
+const ACCENT_DARK = "#115e59";
+const ACCENT_SOFT = "#ecfdf5";
+const ACCENT_BORDER = "#99f6e4";
 
 function ColorDot({ hex, size = 18, selected = false }) {
   if (!hex) return null;
+  const normalized = String(hex).trim().toLowerCase();
+  const isLight =
+    normalized === "#fff" ||
+    normalized === "#ffffff" ||
+    normalized === "white" ||
+    normalized === "#f8fafc" ||
+    normalized === "#f9fafb";
   return (
     <Box
       component="span"
@@ -35,8 +48,10 @@ function ColorDot({ hex, size = 18, selected = false }) {
         borderRadius: "50%",
         bgcolor: hex.startsWith("linear-gradient") ? undefined : hex,
         background: hex.startsWith("linear-gradient") ? hex : undefined,
-        border: selected ? "2px solid #111" : "1px solid rgba(0,0,0,0.25)",
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.5)",
+        border: selected || isLight ? "1px solid rgba(15,23,42,0.55)" : "1px solid rgba(0,0,0,0.28)",
+        boxShadow: isLight
+          ? "inset 0 0 0 2px rgba(255,255,255,0.8), 0 1px 4px rgba(15,23,42,0.18)"
+          : "inset 0 0 0 1px rgba(255,255,255,0.45), 0 1px 4px rgba(15,23,42,0.12)",
         display: "inline-block",
         flex: "0 0 auto",
       }}
@@ -321,7 +336,7 @@ const ProductDetails = () => {
     const name = String(
       product?.offer?.name || product?.offer?.badge_text || "Offer"
     );
-    return `${name} · ${percent0(pct)}%`;
+    return `${name} · ${percent0(pct)}% off`;
   }, [product?.offer]);
 
   const stockMeta = useMemo(() => {
@@ -357,6 +372,8 @@ const ProductDetails = () => {
 
   const sellingPrice = Number(preferredItem?.selling_price || 0);
   const strikePrice = Number(preferredItem?.strike_price || 0);
+  const categoryId = product?.category?.id;
+  const categoryName = product?.category?.name || "Category";
 
   /* -------------------- safe early return -------------------- */
   if (loading) {
@@ -409,6 +426,15 @@ const ProductDetails = () => {
       }
       if (!canAdd) {
         setToast("Out of stock.");
+        return;
+      }
+
+      const existingQty = readCart(effectiveSlug)
+        .filter((line) => line?.item_uid === preferredItem.item_uid)
+        .reduce((sum, line) => sum + (Number(line?.quantity || 1) || 1), 0);
+      const availability = await checkRequestedQuantity(effectiveSlug, preferredItem, existingQty + 1);
+      if (!availability.ok) {
+        setToast(availabilityMessage(availability) || "This item is not available now.");
         return;
       }
 
@@ -469,6 +495,12 @@ const ProductDetails = () => {
         return;
       }
 
+      const availability = await checkRequestedQuantity(effectiveSlug, preferredItem, 1);
+      if (!availability.ok) {
+        setToast(availabilityMessage(availability) || "This item is not available now.");
+        return;
+      }
+
       const styleLabel = preferredItem?.style_id
         ? STYLE_MAP[String(preferredItem.style_id)] || null
         : null;
@@ -518,7 +550,9 @@ const ProductDetails = () => {
   return (
     <Box
       sx={{
-        p: { xs: 1.1, md: 3 },                // ✅ tighter on mobile
+        px: { xs: 1.5, md: 3 },
+        pt: { xs: 0.7, md: 2 },
+        pb: { xs: 1.5, md: 3 },
         maxWidth: 1100,
         mx: "auto",
         fontFamily: PAGE_FONT,
@@ -532,7 +566,7 @@ const ProductDetails = () => {
             position: "fixed",
             right: 16,
             bottom: 16,
-            bgcolor: "#111",
+            bgcolor: ACCENT_DARK,
             color: "#fff",
             px: 2,
             py: 1.25,
@@ -548,17 +582,33 @@ const ProductDetails = () => {
         </Box>
       )}
 
+      <StorePageBar
+        slug={effectiveSlug}
+        current=""
+        crumbs={
+          categoryId
+            ? [
+                {
+                  label: categoryName,
+                  to: `/store/${encodeURIComponent(effectiveSlug)}/products?categoryId=${encodeURIComponent(categoryId)}`,
+                },
+              ]
+            : []
+        }
+        sx={{ mb: { xs: 1.15, md: 1.8 } }}
+      />
+
       <Stack
         direction={{ xs: "column", md: "row" }}
-        spacing={{ xs: 1.0, md: 3 }}           // ✅ reduce spacing on mobile
+        spacing={{ xs: 1.6, md: 3 }}
         alignItems="flex-start"
       >
         {/* LEFT: Image (desktop) | Header + Image + Price (mobile) */}
         <Box sx={{ width: { xs: "100%", md: 520 }, maxWidth: "100%" }}>
           {/* ✅ MOBILE: header above image (tight) */}
           {isMobile && (
-            <Box sx={{ mb: 0.6 }}>
-              <Typography sx={{ fontWeight: 950, fontSize: 21, lineHeight: 1.12 }}>
+            <Box sx={{ mb: 1.85 }}>
+              <Typography sx={{ fontWeight: 950, fontSize: 22, lineHeight: 1.16 }}>
                 {product.label}
               </Typography>
             </Box>
@@ -573,7 +623,7 @@ const ProductDetails = () => {
 
           {/* ✅ MOBILE: price below image (green price, red strike, offer right aligned) */}
           {isMobile && (
-            <Box sx={{ mt: 0.8 }}>
+            <Box sx={{ mt: 1.25 }}>
               <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
                 {/* Price (GREEN) */}
                 <Typography sx={{ fontWeight: 950, fontSize: 22, color: "#1B8A3A" }}>
@@ -602,7 +652,7 @@ const ProductDetails = () => {
                       size="small"
                       sx={{
                         fontWeight: 950,
-                        bgcolor: "#111",
+                        bgcolor: ACCENT_DARK,
                         color: "#fff",
                         borderRadius: 999,
                         height: 24,
@@ -651,7 +701,7 @@ const ProductDetails = () => {
                     size="small"
                     sx={{
                       fontWeight: 900,
-                      bgcolor: "#111",
+                      bgcolor: ACCENT_DARK,
                       color: "#fff",
                       borderRadius: 999,
                     }}
@@ -661,100 +711,114 @@ const ProductDetails = () => {
             </>
           )}
 
-          {/* ✅ tighter gap on mobile */}
-          <Box sx={{ height: { xs: 8, md: 14 } }} />
+          <Box sx={{ height: { xs: 14, md: 14 } }} />
 
-          {/* ✅ Subcategories (label = Size) with reduced spacing */}
-          {subcats.length > 0 && (
-            <Box>
-              <Typography
-                sx={{
-                  fontWeight: 950,
-                  fontSize: 12.2,
-                  opacity: 0.75,
-                  mb: 0.6,
-                }}
-              >
-                Size
-              </Typography>
-
-              <Stack
-                direction="row"
-                spacing={0.6}                  // ✅ tighter
-                flexWrap="wrap"
-                useFlexGap
-                sx={{ rowGap: 0.6 }}
-              >
-                {subcats.map((sc) => {
-                  const selected = String(selectedSubcategoryId || "") === String(sc.id);
-                  return (
-                    <Chip
-                      key={sc.id}
-                      label={sc.name}
-                      clickable
-                      onClick={() => handleSelectSubcat(sc.id)}
-                      variant={selected ? "filled" : "outlined"}
+          {(subcats.length > 0 || compatibleStyles.length > 0) && (
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+                gap: 1,
+                alignItems: "start",
+              }}
+            >
+              <Box>
+                {subcats.length > 0 ? (
+                  <>
+                    <Typography
                       sx={{
                         fontWeight: 950,
-                        borderRadius: 999,
-                        borderColor: selected ? "#111" : "rgba(0,0,0,0.18)",
-                        bgcolor: selected ? "#111" : "transparent",
-                        color: selected ? "#fff" : "#111",
-                        height: 30,
-                        "& .MuiChip-label": { px: 1.1 },
+                        fontSize: 12.2,
+                        opacity: 0.75,
+                        mb: 0.6,
                       }}
-                    />
-                  );
-                })}
-              </Stack>
-            </Box>
-          )}
+                    >
+                      Size
+                    </Typography>
 
-          {/* ✅ Style options (tight) */}
-          {compatibleStyles.length > 0 && (
-            <Box sx={{ mt: 1.2 }}>
-              <Typography sx={{ fontWeight: 950, fontSize: 12.2, opacity: 0.75, mb: 0.6 }}>
-                Color
-              </Typography>
+                    <Stack direction="row" spacing={0.6} flexWrap="wrap" useFlexGap sx={{ rowGap: 0.6 }}>
+                      {subcats.map((sc) => {
+                        const selected = String(selectedSubcategoryId || "") === String(sc.id);
+                        return (
+                          <Chip
+                            key={sc.id}
+                            label={sc.name}
+                            clickable
+                            onClick={() => handleSelectSubcat(sc.id)}
+                            variant={selected ? "filled" : "outlined"}
+                            sx={{
+                              fontWeight: 950,
+                              borderRadius: 999,
+                              borderColor: selected ? ACCENT : "rgba(15,23,42,0.18)",
+                              bgcolor: selected ? ACCENT : "transparent",
+                              color: selected ? "#fff" : "#111",
+                              height: 30,
+                              "& .MuiChip-label": { px: 1.1 },
+                            }}
+                          />
+                        );
+                      })}
+                    </Stack>
+                  </>
+                ) : null}
+              </Box>
 
-              <Stack
-                direction="row"
-                spacing={0.6}                  // ✅ tighter
-                flexWrap="wrap"
-                useFlexGap
-                sx={{ rowGap: 0.6 }}
-              >
-                {compatibleStyles.map((sid) => {
-                  const meta = getStyleMeta(sid);
-                  const label = meta?.label || STYLE_MAP[String(sid)] || `Style ${sid}`;
-                  const selected = String(selectedStyleId || "") === String(sid);
-                  return (
-                    <Chip
-                      key={sid}
-                      label={label}
-                      icon={<ColorDot hex={meta?.hex} selected={selected} />}
-                      clickable
-                      onClick={() => handleSelectStyle(sid)}
-                      variant={selected ? "filled" : "outlined"}
-                      sx={{
-                        fontWeight: 950,
-                        borderRadius: 999,
-                        borderColor: selected ? "#111" : "rgba(0,0,0,0.18)",
-                        bgcolor: selected ? "#f8fafc" : "transparent",
-                        color: "#111",
-                        height: 30,
-                        "& .MuiChip-icon": { ml: 0.8 },
-                        "& .MuiChip-label": { px: 1.1 },
-                      }}
-                    />
-                  );
-                })}
-              </Stack>
+              <Box sx={{ textAlign: "right" }}>
+                {compatibleStyles.length > 0 ? (
+                  <>
+                    <Typography sx={{ fontWeight: 950, fontSize: 12.2, opacity: 0.75, mb: 0.6 }}>
+                      Color
+                    </Typography>
+
+                    <Stack
+                      direction="row"
+                      spacing={0.7}
+                      flexWrap="wrap"
+                      useFlexGap
+                      justifyContent="flex-end"
+                      sx={{ rowGap: 0.7 }}
+                    >
+                      {compatibleStyles.map((sid) => {
+                        const meta = getStyleMeta(sid);
+                        const label = meta?.label || STYLE_MAP[String(sid)] || `Style ${sid}`;
+                        const selected = String(selectedStyleId || "") === String(sid);
+                        return (
+                          <Box
+                            key={sid}
+                            component="button"
+                            type="button"
+                            title={label}
+                            aria-label={`Select color ${label}`}
+                            onClick={() => handleSelectStyle(sid)}
+                            sx={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: "50%",
+                              border: selected ? `2px solid ${ACCENT}` : "1px solid rgba(15,23,42,0.2)",
+                              bgcolor: selected ? ACCENT_SOFT : "#fff",
+                              display: "inline-grid",
+                              placeItems: "center",
+                              p: 0,
+                              cursor: "pointer",
+                              boxShadow: selected
+                                ? "0 0 0 3px rgba(15,118,110,0.14)"
+                                : "0 1px 4px rgba(15,23,42,0.08)",
+                              "&:hover": { borderColor: ACCENT },
+                            }}
+                          >
+                            <ColorDot hex={meta?.hex} size={23} selected={selected} />
+                          </Box>
+                        );
+                      })}
+                    </Stack>
+                  </>
+                ) : null}
+              </Box>
             </Box>
           )}
 
           {/* ✅ In-stock ABOVE buttons (tight) */}
-          <Stack direction="row" spacing={1} sx={{ mt: 1.0 }} alignItems="center">
+          <Stack direction="row" spacing={1} sx={{ mt: { xs: 1.5, md: 1.0 } }} alignItems="center">
             <Chip
               label={stockMeta.label}
               size="small"
@@ -771,21 +835,21 @@ const ProductDetails = () => {
           </Stack>
 
           {/* Buttons row: Buy Now first + Add to Cart beside */}
-          <Stack direction="row" spacing={1.0} sx={{ mt: 1.0 }}>
+          <Stack direction="row" spacing={1.0} sx={{ mt: { xs: 1.35, md: 1.0 } }}>
             <Button
               fullWidth
               variant="contained"
               disabled={!canAdd}
               onClick={handleBuyNow}
               sx={{
-                bgcolor: "#111",
+                bgcolor: ACCENT,
                 color: "#fff",
                 fontWeight: 950,
                 textTransform: "none",
                 px: 2.2,
                 py: 1.05,
                 borderRadius: 2,
-                "&:hover": { bgcolor: "#000" },
+                "&:hover": { bgcolor: ACCENT_DARK },
               }}
             >
               Buy Now
@@ -797,14 +861,15 @@ const ProductDetails = () => {
               disabled={!canAdd || adding}
               onClick={handleAddToCart}
               sx={{
-                borderColor: "#111",
-                color: "#111",
+                borderColor: ACCENT_BORDER,
+                color: ACCENT_DARK,
+                bgcolor: "#fff",
                 fontWeight: 950,
                 textTransform: "none",
                 px: 2.0,
                 py: 1.05,
                 borderRadius: 2,
-                "&:hover": { borderColor: "#000" },
+                "&:hover": { borderColor: ACCENT, bgcolor: ACCENT_SOFT },
               }}
             >
               {adding ? "Adding…" : "Add to Cart"}
@@ -815,8 +880,8 @@ const ProductDetails = () => {
           <Paper
             variant="outlined"
             sx={{
-              mt: 1.0,                         // ✅ tighter
-              p: 1.0,
+              mt: { xs: 1.45, md: 1.0 },
+              p: { xs: 1.15, md: 1.0 },
               borderRadius: 2,
               bgcolor: "rgba(0,128,128,0.06)",
               borderColor: "rgba(0,128,128,0.18)",
@@ -833,7 +898,7 @@ const ProductDetails = () => {
           {/* Description */}
           {product.description ? (
             <>
-              <Divider sx={{ my: 1.6 }} />
+              <Divider sx={{ my: { xs: 2.1, md: 1.6 } }} />
               <Typography
                 sx={{
                   color: "rgba(0,0,0,0.78)",

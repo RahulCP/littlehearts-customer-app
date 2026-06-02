@@ -129,9 +129,29 @@ export default function CustomerAuthButtons({
   // ---------------- UI ----------------
   if (variant === "mobile") {
     return !isLoggedIn ? (
-      <IconButton color="inherit" onClick={handleLogin} title="Sign in with Google">
-        <GoogleLogo size={24} />
-      </IconButton>
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<GoogleLogo size={18} />}
+        onClick={handleLogin}
+        title="Sign in with Google"
+        sx={{
+          textTransform: "none",
+          borderRadius: 2,
+          borderColor: "#dadce0",
+          color: "#202124",
+          fontWeight: 700,
+          bgcolor: "#fff",
+          minWidth: 0,
+          px: 1,
+          "&:hover": {
+            borderColor: "#c7cdd4",
+            bgcolor: "#f8fafc",
+          },
+        }}
+      >
+        Sign in
+      </Button>
     ) : (
       <IconButton color="inherit" onClick={handleLogout} title="Logout">
         <LogoutIcon sx={{ fontSize: 25 }} />

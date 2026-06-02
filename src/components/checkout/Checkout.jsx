@@ -1,5 +1,5 @@
 // src/pages/store/Checkout.jsx
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useCallback, useMemo, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 
@@ -19,6 +19,8 @@ import HeaderBar from "./HeaderBar";
 
 import CheckoutDesktop from "./CheckoutDesktop";
 import CheckoutMobile from "./CheckoutMobile";
+import { isValidEmail, isValidPhone } from "./contactFormat";
+import { availabilityMessage, checkCartAvailability } from "../../utils/cartAvailability";
 
 /* ---------------- responsive helper ---------------- */
 function useIsMobile(breakpoint = 900) {
@@ -45,6 +47,10 @@ export default function Checkout() {
   // desktop steps (mobile ignores this)
   const [step, setStep] = useState(1); // 1 contact, 2 address, 3 review/pay
   const [loading, setLoading] = useState(false);
+  const [validationAttempt, setValidationAttempt] = useState({
+    contact: false,
+    address: false,
+  });
 
   // Contact
   const [buyer, setBuyer] = useState({ name: "", phone: "", email: "" });
@@ -74,6 +80,7 @@ export default function Checkout() {
   const { cart, isBuyNow, subtotal, totalItems, updateQty } = useCheckoutCart({
     slug,
     location,
+    setToast,
   });
 
   // customer session
@@ -82,6 +89,16 @@ export default function Checkout() {
     setBuyer,
     setAddress,
   });
+
+  const setBuyerFromForm = useCallback((next) => {
+    setValidationAttempt((p) => (p.contact ? { ...p, contact: false } : p));
+    setBuyer(next);
+  }, []);
+
+  const setAddressFromForm = useCallback((next) => {
+    setValidationAttempt((p) => (p.address ? { ...p, address: false } : p));
+    setAddress(next);
+  }, []);
 
   useEffect(() => {
     const prev = previousBuyerRef.current;
@@ -115,26 +132,59 @@ export default function Checkout() {
     setToast,
   });
 
-  const canGoStep2 = useMemo(() => {
+  const contactErrors = useMemo(() => {
     const nameOk = buyer.name.trim().length >= 2;
-    const phoneOk = buyer.phone.trim().length >= 10;
-    return nameOk && phoneOk;
+    const phoneOk = isValidPhone(buyer.phone);
+    const emailOk = isValidEmail(buyer.email);
+    return {
+      name: nameOk ? "" : "Enter full name.",
+      phone: phoneOk ? "" : "Enter a valid phone number.",
+      email: emailOk ? "" : "Enter a valid email address.",
+    };
   }, [buyer]);
 
-  const canGoStep3 = useMemo(() => {
+  const canGoStep2 = useMemo(() => {
+    return Object.values(contactErrors).every((msg) => !msg);
+  }, [contactErrors]);
+
+  const addressErrors = useMemo(() => {
     const line1Ok = address.address_line1.trim().length >= 5;
     const cityOk = address.city.trim().length >= 2;
+    const districtOk = address.district.trim().length >= 2;
     const stateOk = address.state.trim().length >= 2;
     const pinOk = address.pincode.trim().length >= 5;
 
     const receiverName = address.receiver_name || buyer.name;
     const receiverPhone = address.receiver_phone || buyer.phone;
+    const receiverEmail = address.receiver_email || buyer.email;
 
     const receiverOk = (receiverName || "").trim().length >= 2;
-    const receiverPhoneOk = (receiverPhone || "").trim().length >= 10;
+    const receiverPhoneOk = isValidPhone(receiverPhone);
+    const receiverEmailOk = isValidEmail(receiverEmail);
 
-    return line1Ok && cityOk && stateOk && pinOk && receiverOk && receiverPhoneOk;
+    return {
+      receiver_name: receiverOk ? "" : "Enter recipient name.",
+      receiver_phone: receiverPhoneOk ? "" : "Enter recipient phone.",
+      receiver_email: receiverEmailOk ? "" : "Enter recipient email.",
+      address_line1: line1Ok ? "" : "Enter house, street, or area.",
+      city: cityOk ? "" : "Enter city.",
+      district: districtOk ? "" : "Enter district.",
+      state: stateOk ? "" : "Select state.",
+      pincode: pinOk ? "" : "Enter pincode.",
+    };
   }, [address, buyer]);
+
+  const canGoStep3 = useMemo(() => {
+    return Object.values(addressErrors).every((msg) => !msg);
+  }, [addressErrors]);
+
+  const visibleContactErrors = useMemo(() => {
+    return validationAttempt.contact ? contactErrors : {};
+  }, [contactErrors, validationAttempt.contact]);
+
+  const visibleAddressErrors = useMemo(() => {
+    return validationAttempt.address ? addressErrors : {};
+  }, [addressErrors, validationAttempt.address]);
 
   /* ---------------- helpers ---------------- */
   function buildReceiver() {
@@ -288,14 +338,20 @@ export default function Checkout() {
   const onPayNow = async () => {
     try {
       if (!cart.length) return setToast("Cart is empty.");
-      if (!canGoStep2) {
-        setToast("Please fill contact details.");
-        if (!isMobile) setStep(1);
+      const availability = await checkCartAvailability(slug, cart);
+      if (!availability.ok) {
+        setToast(availabilityMessage(availability) || "Some items are no longer available in requested quantity.");
         return;
       }
-      if (!canGoStep3) {
-        setToast("Please fill address details.");
-        if (!isMobile) setStep(2);
+
+      if (!canGoStep2 || !canGoStep3) {
+        setValidationAttempt((p) => ({
+          ...p,
+          contact: !canGoStep2 || isMobile ? true : p.contact,
+          address: !canGoStep3 || isMobile ? true : p.address,
+        }));
+        setToast("Please fill the fields marked red.");
+        if (!isMobile) setStep(!canGoStep2 ? 1 : 2);
         return;
       }
 
@@ -370,9 +426,9 @@ export default function Checkout() {
           onOpenCoupons={onOpenCoupons}
           // form
           buyer={buyer}
-          setBuyer={setBuyer}
+          setBuyer={setBuyerFromForm}
           address={address}
-          setAddress={setAddress}
+          setAddress={setAddressFromForm}
           sendToDifferentPerson={sendToDifferentPerson}
           setSendToDifferentPerson={setSendToDifferentPerson}
           // keep props (but PhonePe only)
@@ -381,6 +437,9 @@ export default function Checkout() {
           // validations + totals
           canGoStep2={canGoStep2}
           canGoStep3={canGoStep3}
+          contactErrors={visibleContactErrors}
+          addressErrors={visibleAddressErrors}
+          setToast={setToast}
           coupons={coupons}
           customerToken={customerToken}
         />
@@ -394,9 +453,9 @@ export default function Checkout() {
           onOpenCoupons={onOpenCoupons}
           // form
           buyer={buyer}
-          setBuyer={setBuyer}
+          setBuyer={setBuyerFromForm}
           address={address}
-          setAddress={setAddress}
+          setAddress={setAddressFromForm}
           sendToDifferentPerson={sendToDifferentPerson}
           setSendToDifferentPerson={setSendToDifferentPerson}
           // keep props (but PhonePe only)
@@ -410,6 +469,12 @@ export default function Checkout() {
           // validations + totals
           canGoStep2={canGoStep2}
           canGoStep3={canGoStep3}
+          contactErrors={visibleContactErrors}
+          addressErrors={visibleAddressErrors}
+          onValidationAttempt={(section) =>
+            setValidationAttempt((p) => ({ ...p, [section]: true }))
+          }
+          setToast={setToast}
           coupons={coupons}
           customerToken={customerToken}
         />

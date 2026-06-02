@@ -12,7 +12,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { useNavigate } from "react-router-dom";
 
-const MobileDrawerMenu = ({ mobileOpen, handleDrawerToggle, menuItems }) => {
+const MobileDrawerMenu = ({ mobileOpen, handleDrawerToggle, menuItems, title = "Shop" }) => {
   const navigate = useNavigate();
 
   return (
@@ -47,7 +47,7 @@ const MobileDrawerMenu = ({ mobileOpen, handleDrawerToggle, menuItems }) => {
             fontFamily: "Assistant, sans-serif",
           }}
         >
-          Shop
+          {title}
         </Typography>
 
         <IconButton onClick={handleDrawerToggle}>

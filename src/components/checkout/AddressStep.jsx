@@ -1,10 +1,11 @@
 // src/pages/store/checkout/components/steps/AddressStep.jsx
 import React from "react";
 import { INDIAN_STATES, KERALA_DISTRICTS, isKerala } from "../../constants/addressOptions";
+import { normalizeEmailInput, normalizePhoneInput } from "./contactFormat";
 
-function AddressSelect({ S, value, onChange, children }) {
+function AddressSelect({ S, value, onChange, children, error = "" }) {
   return (
-    <select style={{ ...S.input, background: "#fff" }} value={value} onChange={onChange}>
+    <select style={{ ...S.input, ...(error ? S.inputError : null), background: "#fff" }} value={value} onChange={onChange}>
       {children}
     </select>
   );
@@ -16,6 +17,7 @@ export default function AddressStep({
   address,
   setAddress,
   canGoStep3,
+  errors = {},
   onBack,
   onNext,
 }) {
@@ -26,34 +28,37 @@ export default function AddressStep({
         Recipient details are filled from contact details. You can change them.
       </p>
 
-      <div style={{ marginTop: 12, ...S.row }}>
+      <div style={{ marginTop: 12 }}>
         <div style={S.field}>
           <div style={S.label}>Recipient Name *</div>
           <input
-            style={S.input}
+            style={{ ...S.input, ...(errors.receiver_name ? S.inputError : null) }}
             value={address.receiver_name}
             onChange={(e) => setAddress((p) => ({ ...p, receiver_name: e.target.value }))}
             placeholder="Recipient name"
           />
         </div>
+      </div>
+
+      <div style={{ marginTop: 12, ...S.twoCol }}>
         <div style={S.field}>
           <div style={S.label}>Recipient Phone *</div>
           <input
-            style={S.input}
+            style={{ ...S.input, ...(errors.receiver_phone ? S.inputError : null) }}
             value={address.receiver_phone}
-            onChange={(e) => setAddress((p) => ({ ...p, receiver_phone: e.target.value }))}
+            onChange={(e) => setAddress((p) => ({ ...p, receiver_phone: normalizePhoneInput(e.target.value) }))}
             placeholder="Recipient phone"
+            inputMode="tel"
+            maxLength={10}
           />
         </div>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
         <div style={S.field}>
-          <div style={S.label}>Recipient Email (optional)</div>
+          <div style={S.label}>Recipient Email *</div>
           <input
-            style={S.input}
+            type="email"
+            style={{ ...S.input, ...(errors.receiver_email ? S.inputError : null) }}
             value={address.receiver_email}
-            onChange={(e) => setAddress((p) => ({ ...p, receiver_email: e.target.value }))}
+            onChange={(e) => setAddress((p) => ({ ...p, receiver_email: normalizeEmailInput(e.target.value) }))}
             placeholder="Recipient email"
           />
         </div>
@@ -63,7 +68,7 @@ export default function AddressStep({
         <div style={S.field}>
           <div style={S.label}>Address line 1 *</div>
           <input
-            style={S.input}
+            style={{ ...S.input, ...(errors.address_line1 ? S.inputError : null) }}
             value={address.address_line1}
             onChange={(e) => setAddress((p) => ({ ...p, address_line1: e.target.value }))}
             placeholder="House, street, area"
@@ -86,12 +91,12 @@ export default function AddressStep({
       <div style={{ marginTop: 12, ...S.row }}>
         <div style={S.field}>
           <div style={S.label}>City *</div>
-          <input style={S.input} value={address.city} onChange={(e) => setAddress((p) => ({ ...p, city: e.target.value }))} />
+          <input style={{ ...S.input, ...(errors.city ? S.inputError : null) }} value={address.city} onChange={(e) => setAddress((p) => ({ ...p, city: e.target.value }))} />
         </div>
         <div style={S.field}>
-          <div style={S.label}>District</div>
+          <div style={S.label}>District *</div>
           {isKerala(address.state) ? (
-            <AddressSelect S={S} value={address.district} onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))}>
+            <AddressSelect S={S} value={address.district} error={errors.district} onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))}>
               <option value="">Select district</option>
               {KERALA_DISTRICTS.map((name) => (
                 <option key={name} value={name}>
@@ -100,7 +105,7 @@ export default function AddressStep({
               ))}
             </AddressSelect>
           ) : (
-            <input style={S.input} value={address.district} onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))} />
+            <input style={{ ...S.input, ...(errors.district ? S.inputError : null) }} value={address.district} onChange={(e) => setAddress((p) => ({ ...p, district: e.target.value }))} />
           )}
         </div>
       </div>
@@ -129,7 +134,7 @@ export default function AddressStep({
         </div>
         <div style={S.field}>
           <div style={S.label}>Pincode *</div>
-          <input style={S.input} value={address.pincode} onChange={(e) => setAddress((p) => ({ ...p, pincode: e.target.value }))} />
+          <input style={{ ...S.input, ...(errors.pincode ? S.inputError : null) }} value={address.pincode} onChange={(e) => setAddress((p) => ({ ...p, pincode: e.target.value }))} />
         </div>
       </div>
 
@@ -137,7 +142,7 @@ export default function AddressStep({
         <button style={{ ...S.btn("secondary"), width: 160 }} onClick={onBack} type="button">
           Back
         </button>
-        <button style={S.btn("primary", !canGoStep3)} disabled={!canGoStep3} onClick={onNext} type="button">
+        <button style={S.btn("primary", false)} onClick={onNext} type="button">
           Continue
         </button>
       </div>

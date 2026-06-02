@@ -4,6 +4,8 @@ import axios from "axios";
 import { API_BASE_URL } from "../../config/constants";
 import { buildImageUrl } from "../../utils/imageHelpers"; // ✅ adjust path if needed
 import { getStyleMeta } from "../../config/styleOptions";
+import StorePageBar from "../StoreNavigation/StorePageBar";
+import { availabilityMessage, checkCartAvailability, checkRequestedQuantity } from "../../utils/cartAvailability";
 
 /* ---------------- CART HELPERS ---------------- */
 function getCartStorageKey(slug) {
@@ -269,19 +271,55 @@ export default function MyCart() {
     writeCart(slug, next);
   };
 
-  const incQty = (item_uid) => {
+  const incQty = async (item_uid) => {
+    const target = cart.find((x) => x.item_uid === item_uid);
+    if (!target) return;
+
+    const requestedQty = Number(target.quantity || 1) + 1;
+    let verifiedAvailableQty = null;
+    try {
+      const result = await checkRequestedQuantity(slug, target, requestedQty);
+      const checked = result?.items?.find((x) => String(x.item_uid) === String(item_uid));
+      const availableQty = Number(checked?.available_qty ?? target.available_qty ?? target.stocked_quantity ?? 0);
+      verifiedAvailableQty = Number.isFinite(availableQty) ? availableQty : null;
+
+      if (!result?.ok) {
+        setToast(availabilityMessage(result) || "Requested quantity is not available.");
+        if (Number.isFinite(availableQty)) {
+          const cappedQty = Math.max(0, availableQty);
+          sync(
+            cart
+              .map((x) => (x.item_uid === item_uid ? { ...x, quantity: cappedQty, available_qty: cappedQty, stocked_quantity: cappedQty } : x))
+              .filter((x) => Number(x.quantity || 0) > 0)
+          );
+        }
+        return;
+      }
+    } catch (e) {
+      console.error("[availability] cart qty check failed", e);
+      setToast("Could not verify stock. Please try again.");
+      return;
+    }
+
     const next = cart.map((x) => {
       if (x.item_uid !== item_uid) return x;
 
       const current = Number(x.quantity || 1);
-      const stock = x.stocked_quantity == null ? null : Number(x.stocked_quantity);
+      const stockSource = verifiedAvailableQty ?? x.available_qty ?? x.stocked_quantity;
+      const stock = stockSource == null ? null : Number(stockSource);
 
       if (stock != null && Number.isFinite(stock) && current >= stock) {
         setToast("Reached max stock.");
         return x;
       }
 
-      return { ...x, quantity: current + 1, updated_at: new Date().toISOString() };
+      return {
+        ...x,
+        quantity: current + 1,
+        available_qty: stock != null && Number.isFinite(stock) ? stock : x.available_qty,
+        stocked_quantity: stock != null && Number.isFinite(stock) ? stock : x.stocked_quantity,
+        updated_at: new Date().toISOString(),
+      };
     });
 
     sync(next);
@@ -306,9 +344,20 @@ export default function MyCart() {
     setToast("Removed from cart.");
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
     if (!cart.length) {
       setToast("Your cart is empty.");
+      return;
+    }
+    try {
+      const availability = await checkCartAvailability(slug, cart);
+      if (!availability.ok) {
+        setToast(availabilityMessage(availability) || "Some cart items are no longer available.");
+        return;
+      }
+    } catch (e) {
+      console.error("[availability] cart checkout check failed", e);
+      setToast("Could not verify stock. Please try again.");
       return;
     }
     navigate(`/store/${slug}/checkout`);
@@ -701,6 +750,14 @@ export default function MyCart() {
           </div>
         </div>
       )}
+
+      <StorePageBar
+        slug={slug}
+        homeLabel="All Items"
+        homeTo={`/store/${encodeURIComponent(slug)}/products`}
+        current="My Cart"
+        sx={{ mb: { xs: 1.1, md: 1.5 } }}
+      />
 
       <div style={styles.headerRow}>
         <div>

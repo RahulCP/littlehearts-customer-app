@@ -19,6 +19,7 @@ import SalesCard from "./SalesCard";
 import { API_BASE_URL } from "../../config/constants";
 import { FONT_FAMILY } from "../../config/themeConstants";
 import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
+import StorePageBar from "../StoreNavigation/StorePageBar";
 
 function deriveSlugFromPath(pathname) {
   const path = String(pathname || "");
@@ -149,6 +150,7 @@ const SalesList = () => {
 
   // ✅ categoryId comes from query string (?categoryId=1)
   const categoryId = searchParams.get("categoryId"); // string or null
+  const offerUid = searchParams.get("offerUid"); // string or null
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 16;
@@ -170,6 +172,7 @@ const SalesList = () => {
               offset: 0,
               // ✅ IMPORTANT: only send when present
               categoryId: categoryId || undefined,
+              offerUid: offerUid || undefined,
             },
           }
         );
@@ -184,13 +187,13 @@ const SalesList = () => {
     };
 
     load();
-  }, [effectiveSlug, categoryId]);
+  }, [effectiveSlug, categoryId, offerUid]);
 
-  /* -------------------- reset page when category changes -------------------- */
+  /* -------------------- reset page when filters change -------------------- */
   useEffect(() => {
     window.scrollTo({ top: 0 });
     setCurrentPage(1);
-  }, [categoryId]);
+  }, [categoryId, offerUid]);
 
   /* -------------------- pagination -------------------- */
   const pageCount = Math.ceil(allProducts.length / itemsPerPage);
@@ -200,6 +203,16 @@ const SalesList = () => {
     const start = (currentPage - 1) * itemsPerPage;
     return allProducts.slice(start, start + itemsPerPage);
   }, [allProducts, currentPage]);
+
+  const currentPageName = useMemo(() => {
+    if (offerUid) {
+      const match = allProducts.find((p) => String(p?.offer?.offer_uid || "") === String(offerUid));
+      return match?.offer?.badge_text || match?.offer?.name || "Offer";
+    }
+    if (!categoryId) return "Products";
+    const match = allProducts.find((p) => String(p?.category?.id || p?.category_id || "") === String(categoryId));
+    return match?.category?.name || match?.category_name || "Products";
+  }, [allProducts, categoryId, offerUid]);
 
   const handlePageChange = (event, value) => setCurrentPage(value);
 
@@ -216,7 +229,9 @@ const SalesList = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 1280, mx: "auto", px: { xs: 1, sm: 1.5, md: 2 } }}>
+    <Box sx={{ maxWidth: 1280, mx: "auto", px: { xs: 1, sm: 1.5, md: 2 }, pt: { xs: 0.7, md: 1.5 } }}>
+      <StorePageBar slug={effectiveSlug} current={currentPageName} />
+
       {/* Top pagination */}
       <Box sx={{ mb: { xs: 1.6, md: 2.2 } }}>
         <PaginationBar

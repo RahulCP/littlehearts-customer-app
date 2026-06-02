@@ -46,7 +46,7 @@ const SalesCard = ({
   const offerLine = useMemo(() => {
     if (!showOffer) return "";
     const nm = String(offerName || "Offer").trim();
-    return `${nm} · ${percent0(offerPercent)}%`;
+    return `${nm} · ${percent0(offerPercent)}% off`;
   }, [offerName, offerPercent, showOffer]);
 
   const showStrike = useMemo(() => {
@@ -54,17 +54,6 @@ const SalesCard = ({
     const sell = Number(sellingPrice);
     return Number.isFinite(s) && s > 0 && Number.isFinite(sell) && s > sell;
   }, [strikePrice, sellingPrice]);
-
-  const stockMeta = useMemo(() => {
-    const left = Number(itemLeft || 0);
-    if (!inStock || left <= 0) {
-      return { text: "Sold out", bg: "rgba(180,35,24,0.92)", color: "#fff" };
-    }
-    if (left <= 3) {
-      return { text: `Only ${left} left`, bg: "rgba(181,71,8,0.94)", color: "#fff" };
-    }
-    return { text: `${left} available`, bg: "rgba(255,255,255,0.92)", color: "#111" };
-  }, [itemLeft, inStock]);
 
   const src = useMemo(() => buildImageUrl(image), [image]);
 
@@ -107,53 +96,33 @@ const SalesCard = ({
             </Box>
           )}
 
-          {/* Bottom-left overlay */}
-          <Box
-            sx={{
-              position: "absolute",
-              bottom: 8,
-              left: 8,
-              display: "flex",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 1,
-              maxWidth: "calc(100% - 16px)",
-            }}
-          >
-            {showOffer && (
+          {showOffer ? (
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: 8,
+                left: 8,
+                maxWidth: "calc(100% - 16px)",
+              }}
+            >
               <Typography
                 variant="caption"
                 sx={{
                   color: "white",
-                  bgcolor: "rgba(0,0,0,0.78)",
+                  bgcolor: "rgba(0,0,0,0.72)",
                   borderRadius: 999,
-                  px: 1,
-                  py: 0.45,
+                  px: 0.9,
+                  py: 0.35,
                   fontFamily: FONT_FAMILY,
-                  fontSize: { xs: "12px", md: "13px" },
+                  fontSize: { xs: "10.5px", md: "11.5px" },
                   fontWeight: 600,
+                  lineHeight: 1.2,
                 }}
               >
                 {offerLine}
               </Typography>
-            )}
-
-            <Typography
-              variant="caption"
-              sx={{
-                color: stockMeta.color,
-                bgcolor: stockMeta.bg,
-                borderRadius: 999,
-                px: 1,
-                py: 0.45,
-                fontFamily: FONT_FAMILY,
-                fontSize: { xs: "12px", md: "13px" },
-                fontWeight: 700,
-              }}
-            >
-              {stockMeta.text}
-            </Typography>
-          </Box>
+            </Box>
+          ) : null}
         </Box>
 
         {/* Name + prices */}

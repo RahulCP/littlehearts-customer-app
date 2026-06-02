@@ -1,15 +1,18 @@
 // src/pages/store/checkout/checkoutStyles.js
 
 export const S = {
-  page: { padding: 20, maxWidth: 1100, margin: "0 auto" },
-  grid: { display: "grid", gridTemplateColumns: "1.4fr 0.9fr", gap: 16, alignItems: "start" },
-  card: { background: "#fff", border: "1px solid #eee", borderRadius: 14, padding: 14 },
+  page: { padding: 16, maxWidth: 1100, margin: "0 auto", width: "100%", boxSizing: "border-box" },
+  grid: { display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(300px, 0.9fr)", gap: 16, alignItems: "start" },
+  card: { background: "#fff", border: "1px solid #eee", borderRadius: 14, padding: 14, boxSizing: "border-box", width: "100%" },
   h1: { margin: 0, fontSize: 22, fontWeight: 900 },
   muted: { color: "#666", fontSize: 13 },
-  row: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 },
-  field: { display: "grid", gap: 6 },
+  row: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 12 },
+  mobileRow: { display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 10 },
+  twoCol: { display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 10 },
+  field: { display: "grid", gap: 6, minWidth: 0 },
   label: { fontSize: 12, color: "#555", fontWeight: 700 },
-  input: { border: "1px solid #ddd", borderRadius: 12, padding: "10px 12px", outline: "none", fontSize: 14 },
+  input: { border: "1px solid #ddd", borderRadius: 12, padding: "10px 12px", outline: "none", fontSize: 14, width: "100%", boxSizing: "border-box" },
+  inputError: { borderColor: "#f87171", borderWidth: 1.5 },
   btn: (variant = "primary", disabled = false) => ({
     width: "100%",
     borderRadius: 12,

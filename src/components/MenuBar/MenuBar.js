@@ -1,5 +1,5 @@
 // src/components/MenuBar/MenuBar.jsx
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   AppBar,
@@ -13,9 +13,6 @@ import {
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import MenuIcon from "@mui/icons-material/Menu";
 import SearchIcon from "@mui/icons-material/Search";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import HomeIcon from "@mui/icons-material/Home";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 
 import SearchDrawer from "../SalesRecordPage/SearchDrawer";
 import SearchWithDropdown from "../SalesRecordPage/SearchWithDropdown";
@@ -29,28 +26,18 @@ import axios from "axios";
 // ✅ new separated auth UI
 import CustomerAuthButtons from "../../auth/CustomerAuthButtons";
 
-/* ---------------- auth helpers (match CustomerAuthButtons storage keys) ---------------- */
-function getStoreCustomerToken(storeSlug) {
-  if (!storeSlug) return null;
-  try {
-    return localStorage.getItem(`store_customer_token_${storeSlug}`);
-  } catch {
-    return null;
-  }
-}
+const TABLET_UP = "@media (min-width:768px)";
 
 const MenuBar = ({ allItems }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopCategoryOpen, setDesktopCategoryOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [activeOffers, setActiveOffers] = useState([]);
   const [searchItems, setSearchItems] = useState(allItems || []);
-
-  // ✅ forces auth re-check when login/logout happens
-  const [authTick, setAuthTick] = useState(0);
-
   const navigate = useNavigate();
   const location = useLocation();
-  const isSmallScreen = useMediaQuery("(max-width:899px)");
+  const isSmallScreen = useMediaQuery("(max-width:767px)");
   const drawerRef = useRef(null);
 
   // ----------------------------
@@ -76,34 +63,6 @@ const MenuBar = ({ allItems }) => {
       (pathArray[0] !== "store" && pathArray.length === 1));
 
   // ----------------------------
-  // Detect customer login (store-scoped)
-  // ----------------------------
-  const isCustomerLoggedIn = useMemo(() => {
-    void authTick;
-    const token = getStoreCustomerToken(storeSlug);
-    return !!token;
-  }, [storeSlug, authTick]);
-
-  // Refresh auth status when route changes (common after login)
-  useEffect(() => {
-    setAuthTick((t) => t + 1);
-  }, [location.pathname]);
-
-  // Refresh auth status when auth changes (same tab + other tabs)
-  useEffect(() => {
-    const onStorage = () => setAuthTick((t) => t + 1);
-    const onAuthChanged = () => setAuthTick((t) => t + 1);
-
-    window.addEventListener("storage", onStorage);
-    window.addEventListener("customer-auth-changed", onAuthChanged);
-
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("customer-auth-changed", onAuthChanged);
-    };
-  }, []);
-
-  // ----------------------------
   // Fetch categories from API
   // ----------------------------
   useEffect(() => {
@@ -125,6 +84,27 @@ const MenuBar = ({ allItems }) => {
     };
 
     fetchCategories();
+  }, [storeSlug]);
+
+  useEffect(() => {
+    if (!storeSlug) {
+      setActiveOffers([]);
+      return;
+    }
+
+    const fetchActiveOffers = async () => {
+      try {
+        const { data } = await axios.get(
+          `${API_BASE_URL}/store/${storeSlug}/product-offers/active`
+        );
+        setActiveOffers(Array.isArray(data?.offers) ? data.offers : []);
+      } catch (err) {
+        console.error("Error loading active offers for store:", storeSlug, err);
+        setActiveOffers([]);
+      }
+    };
+
+    fetchActiveOffers();
   }, [storeSlug]);
 
   // ----------------------------
@@ -173,6 +153,15 @@ const MenuBar = ({ allItems }) => {
       });
     });
 
+    activeOffers.forEach((offer) => {
+      const name = offer.badge_text || offer.name;
+      if (!name || !offer.offer_uid) return;
+      menuItems.push({
+        text: name,
+        href: `/store/${storeSlug}/products?offerUid=${encodeURIComponent(offer.offer_uid)}`,
+      });
+    });
+
     menuItems.push({ text: "My Orders", href: `/store/${storeSlug}/my-orders`, priority: true });
 
     if (!isStoreWelcomePage) {
@@ -183,6 +172,28 @@ const MenuBar = ({ allItems }) => {
   }
 
   const mobileMenuItems = menuItems;
+  const desktopCategoryItems = storeSlug
+    ? [
+        { text: "All Items", href: `/store/${storeSlug}/products` },
+        ...categories.map((cat) => ({
+          text: cat.name,
+          href: `/store/${storeSlug}/products?categoryId=${cat.id}`,
+        })),
+      ]
+    : menuItems;
+
+  const desktopOfferItems = storeSlug
+    ? activeOffers
+        .map((offer) => {
+          const text = offer.badge_text || offer.name;
+          if (!text || !offer.offer_uid) return null;
+          return {
+            text,
+            href: `/store/${storeSlug}/products?offerUid=${encodeURIComponent(offer.offer_uid)}`,
+          };
+        })
+        .filter(Boolean)
+    : [];
 
   // ----------------------------
   // Search selection handler
@@ -209,26 +220,12 @@ const MenuBar = ({ allItems }) => {
   // Handlers
   // ----------------------------
   const handleDrawerToggle = () => setMobileOpen((prev) => !prev);
+  const handleDesktopCategoryToggle = () => setDesktopCategoryOpen((prev) => !prev);
   const openSearchModal = () => setIsSearchModalOpen(true);
   const closeSearchModal = () => setIsSearchModalOpen(false);
 
   const handleLogoClick = () => {
     if (storeSlug) navigate(`/store/${storeSlug}`);
-    else navigate("/");
-  };
-
-  const handleHomeClick = () => {
-    if (storeSlug) navigate(`/store/${storeSlug}`);
-    else navigate("/");
-  };
-
-  const handleCartClick = () => {
-    if (storeSlug) navigate(`/store/${storeSlug}/my-cart`);
-    else navigate("/"); // no store => go home
-  };
-
-  const handleOrdersClick = () => {
-    if (storeSlug) navigate(`/store/${storeSlug}/my-orders`);
     else navigate("/");
   };
 
@@ -257,12 +254,16 @@ const MenuBar = ({ allItems }) => {
         sx={{
           backgroundColor: "#fff",
           boxShadow: "none",
-          height: { xs: "60px", md: "80px" },
+          height: {
+            xs: desktopOfferItems.length ? "96px" : "60px",
+            [TABLET_UP]: desktopOfferItems.length ? "118px" : "80px",
+            md: desktopOfferItems.length ? "118px" : "80px",
+          },
           borderBottom: "1px solid #ccc",
         }}
       >
         <Container maxWidth="xxl">
-          <Toolbar sx={{ justifyContent: "space-between" }}>
+          <Toolbar sx={{ justifyContent: "space-between", minHeight: { xs: "60px", [TABLET_UP]: "80px", md: "80px" } }}>
             <Grid
               container
               alignItems="center"
@@ -270,7 +271,17 @@ const MenuBar = ({ allItems }) => {
               sx={{ width: "100%" }}
             >
               {/* Logo (Left) */}
-              <Grid item xs={3} md={2}>
+              <Grid
+                item
+                xs={3}
+                md={2}
+                sx={{
+                  [TABLET_UP]: {
+                    flexBasis: "16.666667%",
+                    maxWidth: "16.666667%",
+                  },
+                }}
+              >
                 <Box onClick={handleLogoClick} sx={{ cursor: "pointer" }}>
                   <LogoAnimation />
                 </Box>
@@ -279,33 +290,63 @@ const MenuBar = ({ allItems }) => {
               {/* Search Bar (Desktop) */}
               <Grid
                 item
-                md={2}
+                md={5}
                 sx={{
                   display: { xs: "none", md: "flex" },
+                  [TABLET_UP]: {
+                    display: "flex",
+                    flexBasis: "41.666667%",
+                    maxWidth: "41.666667%",
+                  },
                   justifyContent: "center",
-                  marginTop: "15px",
+                  alignItems: "center",
                 }}
               >
-                <SearchWithDropdown
-                  onSelectItem={handleSearchSelect}
-                  itemsList={searchItems}
-                />
+                <Box sx={{ width: "100%", maxWidth: 360 }}>
+                  <SearchWithDropdown
+                    onSelectItem={handleSearchSelect}
+                    itemsList={searchItems}
+                  />
+                </Box>
               </Grid>
 
-              {/* Desktop Menu + Login (Right) */}
+              {/* Desktop actions (Right) */}
               <Grid
                 item
-                md={8}
+                md={5}
                 sx={{
                   display: { xs: "none", md: "flex" },
+                  [TABLET_UP]: {
+                    display: "flex",
+                    flexBasis: "41.666667%",
+                    maxWidth: "41.666667%",
+                  },
                   justifyContent: "flex-end",
                   alignItems: "center",
-                  gap: 2,
+                  gap: 1,
                 }}
               >
-                <MovingMenu
-                  menuItems={isStoreWelcomePage ? menuItems.filter((item) => item.priority) : menuItems}
-                />
+                {storeSlug ? (
+                  <>
+                    <Button
+                      size="small"
+                      startIcon={<MenuIcon />}
+                      onClick={handleDesktopCategoryToggle}
+                      sx={{
+                        textTransform: "none",
+                        fontWeight: 900,
+                        color: "#0f766e",
+                        border: "1px solid #ccfbf1",
+                        bgcolor: "#f0fdfa",
+                        borderRadius: 1.5,
+                        px: 1.2,
+                        "&:hover": { bgcolor: "#ccfbf1" },
+                      }}
+                    >
+                      Categories
+                    </Button>
+                  </>
+                ) : null}
 
                 {/* ✅ Auth area (Desktop) */}
                 <CustomerAuthButtons storeSlug={storeSlug} variant="desktop" />
@@ -323,41 +364,12 @@ const MenuBar = ({ allItems }) => {
                     justifyContent="flex-end"
                     alignItems="center"
                   >
-                    {!isStoreWelcomePage ? (
-                      <IconButton
-                        color="inherit"
-                        onClick={handleHomeClick}
-                        sx={{ color: "black", mr: 1 }}
-                      >
-                        <HomeIcon sx={{ fontSize: 25 }} />
-                      </IconButton>
-                    ) : null}
-
-                    {!isStoreWelcomePage ? (
-                      <IconButton
-                        color="inherit"
-                        onClick={handleCartClick}
-                        sx={{ mr: 1 }}
-                      >
-                        <ShoppingCartIcon sx={{ fontSize: 25 }} />
-                      </IconButton>
-                    ) : null}
-
                     <IconButton
                       color="inherit"
                       onClick={openSearchModal}
                       sx={{ mr: 1 }}
                     >
                       <SearchIcon sx={{ fontSize: 25 }} />
-                    </IconButton>
-
-                    <IconButton
-                      color="inherit"
-                      onClick={handleOrdersClick}
-                      title="My Orders"
-                      sx={{ mr: 1 }}
-                    >
-                      <ReceiptLongIcon sx={{ fontSize: 25 }} />
                     </IconButton>
 
                     {/* ✅ Auth icon (Mobile) */}
@@ -375,6 +387,46 @@ const MenuBar = ({ allItems }) => {
               )}
             </Grid>
           </Toolbar>
+
+          {desktopOfferItems.length ? (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-start",
+                gap: { xs: 0.6, md: 1 },
+                height: 36,
+                borderTop: "1px solid #f1f5f9",
+                overflowX: "auto",
+                whiteSpace: "nowrap",
+                px: { xs: 0.5, md: 0.5 },
+                "&::-webkit-scrollbar": { display: "none" },
+              }}
+            >
+              {desktopOfferItems.map((offer) => (
+                <Button
+                  key={offer.href}
+                  size="small"
+                  onClick={() => navigate(offer.href)}
+                  sx={{
+                    flex: "0 0 auto",
+                    textTransform: "none",
+                    fontWeight: 900,
+                    fontSize: { xs: 12.5, md: 13 },
+                    color: "#0f766e",
+                    borderRadius: 999,
+                    px: { xs: 1, md: 1.4 },
+                    py: 0.35,
+                    minHeight: 26,
+                    bgcolor: location.pathname + location.search === offer.href ? "#ccfbf1" : "transparent",
+                    "&:hover": { bgcolor: "#f0fdfa" },
+                  }}
+                >
+                  {offer.text}
+                </Button>
+              ))}
+            </Box>
+          ) : null}
         </Container>
       </AppBar>
 
@@ -383,6 +435,13 @@ const MenuBar = ({ allItems }) => {
         mobileOpen={mobileOpen}
         handleDrawerToggle={handleDrawerToggle}
         menuItems={mobileMenuItems}
+      />
+
+      <MobileDrawerMenu
+        mobileOpen={desktopCategoryOpen}
+        handleDrawerToggle={handleDesktopCategoryToggle}
+        menuItems={desktopCategoryItems}
+        title="Categories"
       />
 
       {/* Search Drawer (Mobile / top) */}
@@ -394,7 +453,7 @@ const MenuBar = ({ allItems }) => {
       />
 
       {/* Spacer for AppBar */}
-      <Box sx={{ mt: { xs: "60px", md: "80px" } }} />
+      <Box sx={{ mt: { xs: desktopOfferItems.length ? "96px" : "60px", [TABLET_UP]: desktopOfferItems.length ? "118px" : "80px", md: desktopOfferItems.length ? "118px" : "80px" } }} />
 
       {/* Floating WhatsApp Chat Button */}
       <Box sx={{ position: "fixed", bottom: 20, right: 20, zIndex: 2000 }}>

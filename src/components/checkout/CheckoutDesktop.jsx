@@ -29,9 +29,13 @@ export default function CheckoutDesktop({
 
   customerToken,
   coupons,
+  setToast,
 
   canGoStep2,
   canGoStep3,
+  contactErrors,
+  addressErrors,
+  onValidationAttempt,
 
   loading,
   onPayNow,
@@ -50,7 +54,14 @@ export default function CheckoutDesktop({
               buyer={buyer}
               setBuyer={setBuyer}
               canGoStep2={canGoStep2}
-              onNext={() => setStep(2)}
+              errors={contactErrors}
+              onNext={() => {
+                if (!canGoStep2) {
+                  onValidationAttempt?.("contact");
+                  return setToast?.("Please fill the fields marked red.");
+                }
+                setStep(2);
+              }}
             />
           )}
 
@@ -63,8 +74,15 @@ export default function CheckoutDesktop({
               sendToDifferentPerson={sendToDifferentPerson}
               setSendToDifferentPerson={setSendToDifferentPerson}
               canGoStep3={canGoStep3}
+              errors={addressErrors}
               onBack={() => setStep(1)}
-              onNext={() => setStep(3)}
+              onNext={() => {
+                if (!canGoStep3) {
+                  onValidationAttempt?.("address");
+                  return setToast?.("Please fill the fields marked red.");
+                }
+                setStep(3);
+              }}
             />
           )}
 

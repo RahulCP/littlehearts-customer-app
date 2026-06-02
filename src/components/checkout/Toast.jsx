@@ -1,26 +1,34 @@
 // src/pages/store/checkout/components/Toast.jsx
 import React from "react";
+import { Alert, Slide, Snackbar } from "@mui/material";
+
+function SlideDown(props) {
+  return <Slide {...props} direction="down" />;
+}
 
 export default function Toast({ toast }) {
   if (!toast) return null;
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        right: 20,
-        bottom: 20,
-        background: "#111",
-        color: "#fff",
-        padding: "10px 14px",
-        borderRadius: 10,
-        fontSize: 13,
-        boxShadow: "0 8px 18px rgba(0,0,0,0.25)",
-        zIndex: 9999,
-        maxWidth: 320,
-      }}
+    <Snackbar
+      open
+      anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      TransitionComponent={SlideDown}
+      transitionDuration={{ enter: 280, exit: 220 }}
+      sx={{ zIndex: 9999, mt: { xs: 1.2, md: 2 } }}
     >
-      {toast}
-    </div>
+      <Alert
+        severity="warning"
+        variant="filled"
+        sx={{
+          width: "100%",
+          borderRadius: 2,
+          fontWeight: 850,
+          boxShadow: "0 10px 30px rgba(15, 23, 42, 0.18)",
+        }}
+      >
+        {toast}
+      </Alert>
+    </Snackbar>
   );
 }

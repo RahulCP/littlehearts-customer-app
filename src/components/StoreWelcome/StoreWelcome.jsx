@@ -15,6 +15,9 @@ import Inventory2Icon from "@mui/icons-material/Inventory2";
 import LocalMallIcon from "@mui/icons-material/LocalMall";
 import { API_BASE_URL } from "../../config/constants";
 import { buildImageUrl } from "../../utils/imageHelpers";
+import homeHeroImage1 from "../../assets/images/illolam-home-hero-1.jpg";
+import homeHeroImage2 from "../../assets/images/illolam-home-hero-2.jpg";
+import homeHeroImage3 from "../../assets/images/illolam-home-hero-3.jpg";
 
 function useCustomerSession(slug) {
   const [tick, setTick] = useState(0);
@@ -64,6 +67,8 @@ export default function StoreWelcome() {
   const [store, setStore] = useState(null);
   const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
+  const [activeOffers, setActiveOffers] = useState([]);
+  const [heroIndex, setHeroIndex] = useState(0);
 
   useEffect(() => {
     if (!slug) return;
@@ -91,6 +96,23 @@ export default function StoreWelcome() {
     };
   }, [slug]);
 
+  useEffect(() => {
+    if (!slug) return;
+    let cancelled = false;
+    axios
+      .get(`${API_BASE_URL}/store/${encodeURIComponent(slug)}/product-offers/active`)
+      .then((res) => {
+        if (cancelled) return;
+        setActiveOffers(Array.isArray(res.data?.offers) ? res.data.offers : []);
+      })
+      .catch(() => {
+        if (!cancelled) setActiveOffers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
   const categoryCards = categories.map((cat) => {
     const count = products.filter((p) => {
       const productCat = p.category_id ?? p.category?.id ?? p.categoryId;
@@ -106,7 +128,24 @@ export default function StoreWelcome() {
   const featured = products.slice(0, 5);
   const productTiles = products.slice(0, 8);
   const storeName = store?.name || slug || "Illolam";
-  const heroImage = buildImageUrl(productImage(featured[0]));
+  const heroImages = useMemo(
+    () =>
+      [homeHeroImage2, homeHeroImage3, homeHeroImage1].filter(Boolean),
+    []
+  );
+
+  useEffect(() => {
+    if (heroImages.length <= 1) return undefined;
+    const timer = window.setInterval(() => {
+      setHeroIndex((idx) => (idx + 1) % heroImages.length);
+    }, 10000);
+    return () => window.clearInterval(timer);
+  }, [heroImages.length]);
+
+  useEffect(() => {
+    if (!heroImages.length) return;
+    setHeroIndex((idx) => Math.min(idx, heroImages.length - 1));
+  }, [heroImages.length]);
 
   return (
     <Box
@@ -130,15 +169,43 @@ export default function StoreWelcome() {
           alignItems: "flex-end",
           overflow: "hidden",
           bgcolor: "#111827",
-          backgroundImage: heroImage
-            ? `linear-gradient(90deg, rgba(0,0,0,0.68), rgba(0,0,0,0.28), rgba(0,0,0,0.08)), url("${heroImage}")`
-            : "linear-gradient(135deg, #111827, #374151)",
-          backgroundSize: "cover",
-          backgroundPosition: "center",
         }}
       >
+        {heroImages.length ? (
+          heroImages.map((image, index) => {
+            const active = index === heroIndex;
+            return (
+              <Box
+                key={image}
+                aria-hidden="true"
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0.68), rgba(0,0,0,0.28), rgba(0,0,0,0.08)), url("${image}")`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  opacity: active ? 1 : 0,
+                  transform: active ? "scale(1.045)" : "scale(1)",
+                  transition: "opacity 1400ms ease, transform 10500ms ease",
+                  willChange: "opacity, transform",
+                }}
+              />
+            );
+          })
+        ) : (
+          <Box
+            aria-hidden="true"
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background: "linear-gradient(135deg, #111827, #374151)",
+            }}
+          />
+        )}
         <Box
           sx={{
+            position: "relative",
+            zIndex: 1,
             maxWidth: 1180,
             mx: "auto",
             width: "100%",
@@ -172,6 +239,30 @@ export default function StoreWelcome() {
               Shop all items
             </Button>
           </Stack>
+
+          {heroImages.length > 1 ? (
+            <Stack direction="row" spacing={0.8} sx={{ mt: 2.2 }}>
+              {heroImages.map((image, index) => (
+                <Box
+                  key={`hero-dot-${image}`}
+                  component="button"
+                  type="button"
+                  aria-label={`Show hero image ${index + 1}`}
+                  onClick={() => setHeroIndex(index)}
+                  sx={{
+                    width: index === heroIndex ? 22 : 8,
+                    height: 8,
+                    borderRadius: 999,
+                    border: 0,
+                    p: 0,
+                    cursor: "pointer",
+                    bgcolor: index === heroIndex ? "#fff" : "rgba(255,255,255,0.45)",
+                    transition: "width 220ms ease, background-color 220ms ease",
+                  }}
+                />
+              ))}
+            </Stack>
+          ) : null}
         </Box>
       </Box>
 
@@ -213,6 +304,36 @@ export default function StoreWelcome() {
             <Card sx={{ gridColumn: "1 / -1", borderRadius: 2 }}><CardContent>No categories yet.</CardContent></Card>
           )}
         </Box>
+
+        {activeOffers.length ? (
+          <>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: { xs: 3, md: 4.5 }, mb: 1.2 }}>
+              <Typography sx={{ fontWeight: 950, fontSize: 20, flex: 1 }}>Active offers</Typography>
+            </Stack>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" }, gap: 1.2 }}>
+              {activeOffers.map((offer) => (
+                <Card
+                  key={offer.offer_uid}
+                  onClick={() => navigate(`/store/${encodeURIComponent(slug)}/products?offerUid=${encodeURIComponent(offer.offer_uid)}`)}
+                  sx={{
+                    borderRadius: 1.5,
+                    cursor: "pointer",
+                    border: "1px solid #ccfbf1",
+                    bgcolor: "#f0fdfa",
+                    boxShadow: "none",
+                  }}
+                >
+                  <CardContent sx={{ p: 1.4 }}>
+                    <Typography sx={{ fontWeight: 950 }} noWrap>{offer.badge_text || offer.name}</Typography>
+                    <Typography sx={{ color: "text.secondary", fontSize: 12 }}>
+                      {Number(offer.product_count || 0)} items
+                    </Typography>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          </>
+        ) : null}
 
         <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: { xs: 3, md: 4.5 }, mb: 1.2 }}>
           <Typography sx={{ fontWeight: 950, fontSize: 20, flex: 1 }}>Latest items</Typography>
