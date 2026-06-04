@@ -27,6 +27,7 @@ import axios from "axios";
 import CustomerAuthButtons from "../../auth/CustomerAuthButtons";
 
 const TABLET_UP = "@media (min-width:768px)";
+const DESKTOP_UP = "@media (min-width:1025px)";
 
 const MenuBar = ({ allItems }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -38,6 +39,7 @@ const MenuBar = ({ allItems }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isSmallScreen = useMediaQuery("(max-width:767px)");
+  const isCompactSearch = useMediaQuery("(max-width:1024px)");
   const drawerRef = useRef(null);
 
   // ----------------------------
@@ -255,20 +257,35 @@ const MenuBar = ({ allItems }) => {
           backgroundColor: "#fff",
           boxShadow: "none",
           height: {
-            xs: desktopOfferItems.length ? "96px" : "60px",
-            [TABLET_UP]: desktopOfferItems.length ? "118px" : "80px",
-            md: desktopOfferItems.length ? "118px" : "80px",
+            xs: storeSlug ? "108px" : "60px",
+            [TABLET_UP]: storeSlug ? "128px" : "80px",
+            md: storeSlug ? "128px" : "80px",
           },
           borderBottom: "1px solid #ccc",
         }}
       >
-        <Container maxWidth="xxl">
-          <Toolbar sx={{ justifyContent: "space-between", minHeight: { xs: "60px", [TABLET_UP]: "80px", md: "80px" } }}>
+        <Container
+          maxWidth={false}
+          disableGutters
+          sx={{
+            maxWidth: 1280,
+            mx: "auto",
+            px: { xs: 3, sm: 3.5, md: 4 },
+            [DESKTOP_UP]: {
+              maxWidth: "none",
+              px: 3,
+            },
+          }}
+        >
+          <Toolbar
+            disableGutters
+            sx={{ justifyContent: "space-between", minHeight: { xs: "60px", [TABLET_UP]: "80px", md: "80px" } }}
+          >
             <Grid
               container
               alignItems="center"
               justifyContent="space-between"
-              sx={{ width: "100%" }}
+              sx={{ width: "100%", position: "relative" }}
             >
               {/* Logo (Left) */}
               <Grid
@@ -287,45 +304,31 @@ const MenuBar = ({ allItems }) => {
                 </Box>
               </Grid>
 
-              {/* Search Bar (Desktop) */}
-              <Grid
-                item
-                md={5}
-                sx={{
-                  display: { xs: "none", md: "flex" },
-                  [TABLET_UP]: {
-                    display: "flex",
-                    flexBasis: "41.666667%",
-                    maxWidth: "41.666667%",
-                  },
-                  justifyContent: "center",
-                  alignItems: "center",
-                }}
-              >
-                <Box sx={{ width: "100%", maxWidth: 360 }}>
-                  <SearchWithDropdown
-                    onSelectItem={handleSearchSelect}
-                    itemsList={searchItems}
-                  />
-                </Box>
-              </Grid>
-
               {/* Desktop actions (Right) */}
               <Grid
                 item
-                md={5}
+                md={10}
                 sx={{
                   display: { xs: "none", md: "flex" },
                   [TABLET_UP]: {
                     display: "flex",
-                    flexBasis: "41.666667%",
-                    maxWidth: "41.666667%",
+                    flexBasis: "83.333333%",
+                    maxWidth: "83.333333%",
                   },
                   justifyContent: "flex-end",
                   alignItems: "center",
                   gap: 1,
                 }}
               >
+                {!isCompactSearch ? (
+                  <Box sx={{ width: 360, flex: "0 1 360px" }}>
+                    <SearchWithDropdown
+                      onSelectItem={handleSearchSelect}
+                      itemsList={searchItems}
+                    />
+                  </Box>
+                ) : null}
+
                 {storeSlug ? (
                   <>
                     <Button
@@ -335,12 +338,12 @@ const MenuBar = ({ allItems }) => {
                       sx={{
                         textTransform: "none",
                         fontWeight: 900,
-                        color: "#0f766e",
-                        border: "1px solid #ccfbf1",
-                        bgcolor: "#f0fdfa",
+                        color: "#374151",
+                        border: "1px solid #e5e7eb",
+                        bgcolor: "#f3f4f6",
                         borderRadius: 1.5,
                         px: 1.2,
-                        "&:hover": { bgcolor: "#ccfbf1" },
+                        "&:hover": { bgcolor: "#e5e7eb" },
                       }}
                     >
                       Categories
@@ -364,14 +367,6 @@ const MenuBar = ({ allItems }) => {
                     justifyContent="flex-end"
                     alignItems="center"
                   >
-                    <IconButton
-                      color="inherit"
-                      onClick={openSearchModal}
-                      sx={{ mr: 1 }}
-                    >
-                      <SearchIcon sx={{ fontSize: 25 }} />
-                    </IconButton>
-
                     {/* ✅ Auth icon (Mobile) */}
                     <CustomerAuthButtons storeSlug={storeSlug} variant="mobile" />
 
@@ -387,19 +382,32 @@ const MenuBar = ({ allItems }) => {
               )}
             </Grid>
           </Toolbar>
+        </Container>
 
-          {desktopOfferItems.length ? (
+        {storeSlug ? (
+          <Box
+            sx={{
+              maxWidth: 1280,
+              mx: "auto",
+              px: { xs: 3, sm: 3.5, md: 4 },
+              height: 48,
+              width: "100%",
+              boxSizing: "border-box",
+              borderTop: "1px solid #f1f5f9",
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+            }}
+          >
             <Box
               sx={{
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "flex-start",
                 gap: { xs: 0.6, md: 1 },
-                height: 36,
-                borderTop: "1px solid #f1f5f9",
+                minWidth: 0,
+                flex: 1,
                 overflowX: "auto",
                 whiteSpace: "nowrap",
-                px: { xs: 0.5, md: 0.5 },
                 "&::-webkit-scrollbar": { display: "none" },
               }}
             >
@@ -413,21 +421,33 @@ const MenuBar = ({ allItems }) => {
                     textTransform: "none",
                     fontWeight: 900,
                     fontSize: { xs: 12.5, md: 13 },
-                    color: "#0f766e",
-                    borderRadius: 999,
-                    px: { xs: 1, md: 1.4 },
+                    color: "#374151",
+                    borderRadius: 0,
+                    px: { xs: 0, md: 0 },
                     py: 0.35,
+                    minWidth: 0,
                     minHeight: 26,
-                    bgcolor: location.pathname + location.search === offer.href ? "#ccfbf1" : "transparent",
-                    "&:hover": { bgcolor: "#f0fdfa" },
+                    bgcolor: "transparent",
+                    "&:hover": { bgcolor: "transparent", color: "#111827" },
                   }}
                 >
                   {offer.text}
                 </Button>
               ))}
             </Box>
-          ) : null}
-        </Container>
+
+            {isCompactSearch ? (
+              <IconButton
+                color="inherit"
+                onClick={openSearchModal}
+                aria-label="Search items"
+                sx={{ flex: "0 0 auto" }}
+              >
+                <SearchIcon sx={{ fontSize: 25 }} />
+              </IconButton>
+            ) : null}
+          </Box>
+        ) : null}
       </AppBar>
 
       {/* Mobile Drawer */}
@@ -453,7 +473,7 @@ const MenuBar = ({ allItems }) => {
       />
 
       {/* Spacer for AppBar */}
-      <Box sx={{ mt: { xs: desktopOfferItems.length ? "96px" : "60px", [TABLET_UP]: desktopOfferItems.length ? "118px" : "80px", md: desktopOfferItems.length ? "118px" : "80px" } }} />
+      <Box sx={{ mt: { xs: storeSlug ? "108px" : "60px", [TABLET_UP]: storeSlug ? "128px" : "80px", md: storeSlug ? "128px" : "80px" } }} />
 
       {/* Floating WhatsApp Chat Button */}
       <Box sx={{ position: "fixed", bottom: 20, right: 20, zIndex: 2000 }}>

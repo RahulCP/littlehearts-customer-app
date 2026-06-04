@@ -6,11 +6,7 @@ import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import { useNavigate } from "react-router-dom";
 
-const ACCENT = "#0f766e";
-const ACCENT_DARK = "#115e59";
-const ACCENT_SOFT = "#ecfdf5";
-const BORDER = "#ccfbf1";
-
+const ACCENT_DARK = "#374151";
 function ActionButton({ icon, label, onClick, mobile }) {
   const displayLabel = mobile ? String(label || "").replace(/^My\s+/i, "") : label;
 
@@ -27,12 +23,12 @@ function ActionButton({ icon, label, onClick, mobile }) {
           fontSize: 12,
           lineHeight: 1,
           color: ACCENT_DARK,
-          bgcolor: ACCENT_SOFT,
-          border: `1px solid ${BORDER}`,
-          borderRadius: 999,
-          px: 1,
+          bgcolor: "transparent",
+          border: 0,
+          borderRadius: 0,
+          px: 0.25,
           py: 0.9,
-          "&:hover": { bgcolor: "#d1fae5" },
+          "&:hover": { bgcolor: "transparent", color: "#111827" },
           "& .MuiButton-startIcon": {
             mr: 0.45,
           },
@@ -52,11 +48,11 @@ function ActionButton({ icon, label, onClick, mobile }) {
         textTransform: "none",
         fontWeight: 900,
         color: ACCENT_DARK,
-        bgcolor: ACCENT_SOFT,
-        border: `1px solid ${BORDER}`,
-        borderRadius: 999,
-        px: 1.25,
-        "&:hover": { bgcolor: "#d1fae5" },
+        bgcolor: "transparent",
+        border: 0,
+        borderRadius: 0,
+        px: 0.25,
+        "&:hover": { bgcolor: "transparent", color: "#111827" },
       }}
     >
       {displayLabel}

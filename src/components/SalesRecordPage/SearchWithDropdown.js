@@ -285,25 +285,25 @@ const SearchWithDropdown = ({
             autoFocus={mobileDrawer}
             onChange={(e) => setSearchTerm(e.target.value)}
             sx={{
-              backgroundColor: "white",
-              borderRadius: isRichMobile ? 2.5 : "25px",
-              boxShadow: isRichMobile ? "none" : "0px 4px 12px rgba(0, 128, 128, 0.2)",
-              fontSize: "16px",
+              backgroundColor: isRichMobile ? "white" : "#f3f4f6",
+              borderRadius: isRichMobile ? 2.5 : "18px",
+              boxShadow: "none",
+              fontSize: isRichMobile ? "16px" : "14px",
               "& .MuiOutlinedInput-root": {
-                height: isRichMobile ? "48px" : "40px",
-                fontSize: "16px",
-                borderRadius: isRichMobile ? 2.5 : "25px",
-                bgcolor: "#fff",
-                "& fieldset": { borderColor: isRichMobile ? "#cbd5e1" : "#008080" },
-                "&:hover fieldset": { borderColor: isRichMobile ? "#94a3b8" : "#007070" },
-                "&.Mui-focused fieldset": { borderColor: "#0f766e", borderWidth: 1.5 },
+                height: isRichMobile ? "48px" : "34px",
+                fontSize: isRichMobile ? "16px" : "14px",
+                borderRadius: isRichMobile ? 2.5 : "18px",
+                bgcolor: isRichMobile ? "#fff" : "#f3f4f6",
+                "& fieldset": { borderColor: isRichMobile ? "#cbd5e1" : "#e5e7eb" },
+                "&:hover fieldset": { borderColor: isRichMobile ? "#94a3b8" : "#d1d5db" },
+                "&.Mui-focused fieldset": { borderColor: isRichMobile ? "#0f766e" : "#9ca3af", borderWidth: 1.25 },
               },
             }}
             InputProps={{
               ...params.InputProps,
               startAdornment: (
                 <InputAdornment position="start">
-                  <SearchIcon sx={{ color: "#008080" }} />
+                  <SearchIcon sx={{ color: isRichMobile ? "#008080" : "#6b7280", fontSize: isRichMobile ? 24 : 20 }} />
                 </InputAdornment>
               ),
             }}

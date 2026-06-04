@@ -127,7 +127,6 @@ export default function StoreWelcome() {
 
   const featured = products.slice(0, 5);
   const productTiles = products.slice(0, 8);
-  const storeName = store?.name || slug || "Illolam";
   const heroImages = useMemo(
     () =>
       [homeHeroImage2, homeHeroImage3, homeHeroImage1].filter(Boolean),
@@ -181,9 +180,10 @@ export default function StoreWelcome() {
                 sx={{
                   position: "absolute",
                   inset: 0,
-                  backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0.68), rgba(0,0,0,0.28), rgba(0,0,0,0.08)), url("${image}")`,
+                  backgroundImage: `linear-gradient(90deg, rgba(0,0,0,0.38), rgba(0,0,0,0.16), rgba(0,0,0,0.03)), url("${image}")`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
+                  filter: "brightness(1.08) contrast(1.06) saturate(1.04)",
                   opacity: active ? 1 : 0,
                   transform: active ? "scale(1.045)" : "scale(1)",
                   transition: "opacity 1400ms ease, transform 10500ms ease",
@@ -212,36 +212,33 @@ export default function StoreWelcome() {
             px: { xs: 2, sm: 3 },
             pb: { xs: 3, md: 5 },
             color: "#fff",
+            textShadow: "0 2px 12px rgba(0,0,0,0.42)",
           }}
         >
-          <Typography sx={{ fontWeight: 950, fontSize: { xs: 38, sm: 48, md: 68 }, lineHeight: 0.95 }}>
-            {storeName}
-          </Typography>
-          <Typography sx={{ mt: 1.3, maxWidth: 560, color: "rgba(255,255,255,0.86)", fontSize: { xs: 15, md: 18 } }}>
-            Fresh collections, easy checkout, and order history in one store page.
-          </Typography>
-
-          <Stack direction="row" spacing={1.2} sx={{ mt: 2.4, flexWrap: "wrap" }} useFlexGap>
+          <Stack direction="row" spacing={1.2} sx={{ flexWrap: "wrap" }} useFlexGap>
             <Button
               variant="contained"
-              size="large"
               endIcon={<ArrowForwardIcon />}
               onClick={() => navigate(`/store/${encodeURIComponent(slug)}/products`)}
               sx={{
                 textTransform: "none",
-                borderRadius: 1.5,
-                fontWeight: 950,
+                borderRadius: 1.25,
+                fontWeight: 900,
+                fontSize: 14,
+                minHeight: 36,
+                px: 2,
+                py: 0.55,
                 bgcolor: "#fff",
                 color: "#111827",
                 "&:hover": { bgcolor: "#f3f4f6" },
               }}
             >
-              Shop all items
+              Shop Now
             </Button>
           </Stack>
 
           {heroImages.length > 1 ? (
-            <Stack direction="row" spacing={0.8} sx={{ mt: 2.2 }}>
+            <Stack direction="row" spacing={0.8} sx={{ mt: 1.6 }}>
               {heroImages.map((image, index) => (
                 <Box
                   key={`hero-dot-${image}`}

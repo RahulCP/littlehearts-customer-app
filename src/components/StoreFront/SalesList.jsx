@@ -6,6 +6,7 @@ import {
   Pagination,
   PaginationItem,
   Stack,
+  Typography,
 } from "@mui/material";
 import {
   useLocation,
@@ -232,16 +233,40 @@ const SalesList = () => {
     <Box sx={{ maxWidth: 1280, mx: "auto", px: { xs: 1, sm: 1.5, md: 2 }, pt: { xs: 0.7, md: 1.5 } }}>
       <StorePageBar slug={effectiveSlug} current={currentPageName} />
 
-      {/* Top pagination */}
-      <Box sx={{ mb: { xs: 1.6, md: 2.2 } }}>
-        <PaginationBar
-          currentPage={currentPage}
-          pageCount={pageCount}
-          totalItems={totalItems}
-          itemsPerPage={itemsPerPage}
-          onPageChange={handlePageChange}
-          compact
-        />
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1.5,
+          mb: { xs: 1.6, md: 2.2 },
+          minHeight: 36,
+        }}
+      >
+        <Typography
+          component="h1"
+          sx={{
+            color: "#111827",
+            fontWeight: 950,
+            fontSize: { xs: 15, sm: 17, md: 20 },
+            lineHeight: 1.15,
+            minWidth: 0,
+          }}
+          noWrap
+        >
+          {currentPageName}
+        </Typography>
+
+        <Box sx={{ flex: "0 0 auto" }}>
+          <PaginationBar
+            currentPage={currentPage}
+            pageCount={pageCount}
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            onPageChange={handlePageChange}
+            compact
+          />
+        </Box>
       </Box>
 
       {/* Product grid */}
