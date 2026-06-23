@@ -270,9 +270,9 @@ const SalesList = () => {
       </Box>
 
       {/* Product grid */}
-      <Grid container spacing={2}>
+      <Grid container spacing={{ xs: 1.25, sm: 1.75, md: 2 }}>
         {paginatedItems.map((p) => (
-          <Grid item xs={6} md={3} key={p.product_uid}>
+          <Grid item xs={6} sm={6} md={3} key={p.product_uid}>
             <SalesCard
               title={p.label}
               image={p.image}

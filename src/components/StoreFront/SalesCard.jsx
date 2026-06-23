@@ -58,19 +58,29 @@ const SalesCard = ({
   const src = useMemo(() => buildImageUrl(image), [image]);
 
   return (
-    <Box sx={{ maxWidth: 350 }}>
-      <Card sx={{ position: "relative", backgroundColor: "#fafafa" }}>
-        <Box sx={{ position: "relative", overflow: "hidden" }}>
+    <Box sx={{ width: "100%", minWidth: 0 }}>
+      <Card sx={{ position: "relative", width: "100%", backgroundColor: "#fafafa" }}>
+        <Box
+          sx={{
+            position: "relative",
+            overflow: "hidden",
+            width: "100%",
+            aspectRatio: "2 / 3",
+            bgcolor: "#f5f5f5",
+          }}
+        >
           {imgOk && src ? (
             <CardMedia
               component="img"
               sx={{
-                height: { xs: 250, sm: 450 },
+                height: "100%",
                 width: "100%",
                 objectFit: "cover",
+                objectPosition: "center",
                 transition: "transform 0.3s ease-in-out",
+                transform: "scale(1.24)",
                 cursor: "pointer",
-                "&:hover": { transform: "scale(1.05)" },
+                "&:hover": { transform: "scale(1.28)" },
               }}
               image={src}
               title={title}
@@ -81,9 +91,9 @@ const SalesCard = ({
             <Box
               onClick={viewProductDetails}
               sx={{
-                height: { xs: 250, sm: 450 },
+                height: "100%",
                 width: "100%",
-                backgroundColor: "#f3f3f3",
+                backgroundColor: "#f5f5f5",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -100,9 +110,10 @@ const SalesCard = ({
             <Box
               sx={{
                 position: "absolute",
-                bottom: 8,
-                left: 8,
+                top: 8,
+                right: 8,
                 maxWidth: "calc(100% - 16px)",
+                zIndex: 1,
               }}
             >
               <Typography
@@ -126,53 +137,53 @@ const SalesCard = ({
         </Box>
 
         {/* Name + prices */}
-        <Box sx={{ margin: "10px 0px 10px 10px" }}>
+        <Box sx={{ px: { xs: 1, sm: 1.15 }, pt: { xs: 0.7, sm: 0.85 }, pb: { xs: 0.8, sm: 1 } }}>
           <Typography
-            variant="caption"
             onClick={viewProductDetails}
             sx={{
               color: "black",
               fontFamily: FONT_FAMILY,
-              fontWeight: "400",
+              fontWeight: 500,
               cursor: "pointer",
               "&:hover": { textDecoration: "underline" },
-              fontSize: { xs: "15px", md: "18px" },
-              display: "inline-block",
-              maxWidth: "95%",
+              fontSize: { xs: 13.5, sm: 14.5, md: 15.5 },
+              lineHeight: 1.2,
+              display: "block",
+              width: "100%",
             }}
+            noWrap
           >
             {truncatedTitle}
           </Typography>
 
-          <br />
+          <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.65, mt: 0.25, minHeight: 20 }}>
+            {showStrike && (
+              <Typography
+                sx={{
+                  fontFamily: FONT_FAMILY,
+                  textDecoration: "line-through",
+                  color: "#c62828",
+                  fontWeight: 400,
+                  fontSize: { xs: 10.5, sm: 11 },
+                  lineHeight: 1.15,
+                }}
+              >
+                ₹{money2(strikePrice)}
+              </Typography>
+            )}
 
-          {showStrike && (
             <Typography
-              variant="caption"
               sx={{
+                color: "teal",
                 fontFamily: FONT_FAMILY,
-                textDecoration: "line-through",
-                color: "#c62828",
-                fontWeight: "300",
-                fontSize: { xs: "12px", md: "12px" },
-                marginRight: "6px",
+                fontWeight: 700,
+                fontSize: { xs: 14.5, sm: 15.5, md: 16 },
+                lineHeight: 1.15,
               }}
             >
-              ₹{money2(strikePrice)}
+              ₹{money2(sellingPrice)}
             </Typography>
-          )}
-
-          <Typography
-            variant="caption"
-            sx={{
-              color: "teal",
-              fontFamily: FONT_FAMILY,
-              fontWeight: "600",
-              fontSize: { xs: "17px", md: "17px" },
-            }}
-          >
-            ₹{money2(sellingPrice)}
-          </Typography>
+          </Box>
         </Box>
       </Card>
     </Box>
