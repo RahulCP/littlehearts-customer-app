@@ -78,9 +78,8 @@ const SalesCard = ({
                 objectFit: "cover",
                 objectPosition: "center",
                 transition: "transform 0.3s ease-in-out",
-                transform: "scale(1.24)",
                 cursor: "pointer",
-                "&:hover": { transform: "scale(1.28)" },
+                "&:hover": { transform: "scale(1.025)" },
               }}
               image={src}
               title={title}
